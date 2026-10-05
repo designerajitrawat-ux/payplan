@@ -54,7 +54,7 @@ export default function Home() {
           <InView>
             <p className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-3.5 py-1.5 text-xs text-mute backdrop-blur">
               <span className="size-1.5 rounded-full bg-mint glow-dot" />
-              Milestone payments on PayPal, checked by AI
+              For freelancers and the clients who hire them
             </p>
           </InView>
           <h1 className="mx-auto mt-7 max-w-4xl font-display text-5xl font-semibold leading-[0.95] tracking-[-0.04em] font-stretch-expanded sm:text-7xl lg:text-[80px]">
@@ -63,8 +63,19 @@ export default function Home() {
           </h1>
           <InView delay={0.35}>
             <p className="mx-auto mt-7 max-w-xl text-lg leading-relaxed text-mute">
-              The client locks each milestone on their own PayPal. An AI checker tests the work against what you both agreed, and only the share that passed is released.
+              Freelance payments break at handoff: the client goes quiet, or says it is not what was agreed. Here the client locks each milestone on their own PayPal, an AI checker tests the work against the agreed criteria, and only the share that passed is released.
             </p>
+            <ul className="mx-auto mt-6 flex max-w-2xl flex-wrap justify-center gap-2 text-[13px]">
+              {[
+                ["Freelancers", "get paid for every part that passed"],
+                ["Clients", "pay only for what was delivered"],
+                ["AI agents", "pay within limits you set"],
+              ].map(([who, what]) => (
+                <li key={who} className="rounded-full border border-brand-2/20 bg-brand/[0.08] px-3.5 py-1.5 text-mute">
+                  <span className="font-semibold text-ink">{who}</span> {what}
+                </li>
+              ))}
+            </ul>
           </InView>
           <InView delay={0.45}>
             <div className="mt-9 flex flex-wrap justify-center gap-3">
@@ -81,7 +92,7 @@ export default function Home() {
       <ProductWindow />
 
       <section className="mx-auto mt-20 max-w-6xl px-4 sm:px-6">
-        <p className="text-center text-xs text-dim">Every money move is a real platform call</p>
+        <p className="text-center text-xs text-dim">Each money move maps to a PayPal API call · simulated in this prototype, PayPal sandbox next</p>
         <div className="mt-4">
           <Marquee items={platform} />
         </div>
@@ -120,7 +131,8 @@ export default function Home() {
       <section className="mx-auto max-w-7xl px-4 pb-24 sm:px-6">
         <InView>
           <p className="font-mono text-xs uppercase tracking-[0.16em] text-nova">Built on the PayPal platform</p>
-          <h2 className="mt-3 max-w-2xl font-display text-4xl font-semibold tracking-[-0.03em] text-balance font-stretch-semi-expanded">Every money move is a real PayPal call.</h2>
+          <h2 className="mt-3 max-w-2xl font-display text-4xl font-semibold tracking-[-0.03em] text-balance font-stretch-semi-expanded">Every money move maps to a PayPal API.</h2>
+          <p className="mt-4 max-w-xl text-mute">This prototype simulates the calls so you can click through safely. The next build runs every one of them on the PayPal sandbox.</p>
         </InView>
         <InView delay={0.1}>
           <ul className="mt-10 grid gap-px overflow-hidden rounded-[28px] border border-white/[0.08] bg-white/[0.06] sm:grid-cols-2 lg:grid-cols-3">

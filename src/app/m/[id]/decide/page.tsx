@@ -2,7 +2,7 @@
 
 import { motion } from "motion/react";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { DemoGuide } from "@/components/demo-guide";
 import { MilestoneOrbit } from "@/components/milestone-orbit";
 import { MilestoneShell, partyNames } from "@/components/milestone-shell";
@@ -133,7 +133,7 @@ function AgentDecision({ m }: { m: Milestone }) {
         </Panel>
       </aside>
       {m.walkthrough ? (
-        <DemoGuide step={5}>
+        <DemoGuide step={6}>
           Now <strong>{names.client}&apos;s AI agent</strong> decides. It checks the report against the limits {names.client} gave it, then captures the verified share on PayPal by itself.
         </DemoGuide>
       ) : null}
@@ -217,19 +217,32 @@ function ManualDecision({ m }: { m: Milestone }) {
             Simulate: review window ends
           </Button>
         </Panel>
-        <Button variant="secondary" className="w-full" onClick={() => setApproval(m.id, "agent")}>
-          Let my agent decide
-        </Button>
+        {handedBack ? null : (
+          <Button variant="secondary" className="w-full" onClick={() => setApproval(m.id, "agent")}>
+            Let my agent decide
+          </Button>
+        )}
         <ButtonLink href={`/m/${m.id}/report`} variant="ghost" className="w-full">
           Back to the evidence
         </ButtonLink>
       </aside>
       {m.walkthrough ? (
-        <DemoGuide step={5}>
+        <DemoGuide step={6}>
           You are <strong>{names.client}, the client</strong>. Press and hold <strong>Hold to release</strong>, or try <strong>Appeal to a person</strong> to see that path.
         </DemoGuide>
       ) : null}
     </div>
+  );
+}
+
+/** A heading that takes keyboard focus when it appears, so focus is not lost after the page changes state. */
+function FocusHeading({ className, children }: { className: string; children: ReactNode }) {
+  const ref = useRef<HTMLHeadingElement>(null);
+  useEffect(() => ref.current?.focus({ preventScroll: true }), []);
+  return (
+    <h2 ref={ref} tabIndex={-1} className={`outline-none ${className}`}>
+      {children}
+    </h2>
   );
 }
 
@@ -251,10 +264,29 @@ function Decision({ m }: { m: Milestone }) {
             <span className="text-dim">Reason given: </span>
             {m.appealReason}
           </p>
-          <Button variant="secondary" className="mt-5" onClick={() => withdrawAppeal(m.id)}>
-            Withdraw the appeal (demo)
+          <h3 className="mt-6 text-sm font-semibold text-ink">What happens next</h3>
+          <ol className="mt-3 space-y-3 text-sm text-mute">
+            {[
+              "A person from PayPlan reads the signed report, the evidence and both sides' notes.",
+              "Nothing moves while they look: the whole hold, including the verified share, stays on your PayPal, uncharged.",
+              "They decide to release, ask for a fix, or return the money. Both sides see the outcome and the reason.",
+            ].map((s, i) => (
+              <li key={s} className="flex gap-3">
+                <span className="grid size-6 shrink-0 place-items-center rounded-full bg-white/[0.06] font-mono text-xs text-ink">{i + 1}</span>
+                <span>{s}</span>
+              </li>
+            ))}
+          </ol>
+          <Button variant="secondary" className="mt-6" onClick={() => withdrawAppeal(m.id)}>
+            Withdraw the appeal
           </Button>
+          <p className="mt-2 text-xs text-dim">In this prototype the review is not simulated. Withdraw to go back to the decision.</p>
         </Panel>
+        {m.walkthrough ? (
+          <DemoGuide step={6}>
+            This is the appeal path: a person reviews, and no money moves until they decide. <strong>Withdraw the appeal</strong> to return to the decision.
+          </DemoGuide>
+        ) : null}
       </div>
     );
   }
@@ -268,9 +300,9 @@ function Decision({ m }: { m: Milestone }) {
             <Chip tone="good" dot>
               {byAgent ? "Released by the client's agent" : "Released"}
             </Chip>
-            <h2 className="mt-4 font-display text-4xl font-semibold tracking-tight text-ink font-stretch-semi-expanded">
+            <FocusHeading className="mt-4 font-display text-4xl font-semibold tracking-tight text-ink font-stretch-semi-expanded">
               <NumberTicker value={totals.captured} from={0} duration={1400} className="text-mint" /> <span className="text-mute">to {names.freelancer}</span>
-            </h2>
+            </FocusHeading>
             <p className="mt-2 text-sm text-mute">{totals.held > 0 ? `${money(totals.held)} is still only a hold on ${names.client}'s PayPal while the fix is made.` : "The milestone is paid in full."}</p>
             <div className="mt-6">
               <MilestoneOrbit m={m} />
@@ -310,7 +342,7 @@ function Decision({ m }: { m: Milestone }) {
           </aside>
         ) : null}
         {m.walkthrough && totals.held > 0 ? (
-          <DemoGuide step={5} next={{ href: `/m/${m.id}/submit`, label: `Switch to ${names.freelancer} and fix` }}>
+          <DemoGuide step={6} next={{ href: `/m/${m.id}/submit`, label: `Switch to ${names.freelancer} and fix` }}>
             PayPal captured exactly the verified share. The rest stays a hold, not in anyone&apos;s balance. {byAgent ? "No human had to click anything." : ""}
           </DemoGuide>
         ) : null}

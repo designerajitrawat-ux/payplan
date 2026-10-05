@@ -2,7 +2,7 @@
 
 import { AnimatePresence, motion } from "motion/react";
 import Link from "next/link";
-import type { CSSProperties } from "react";
+import { useRef, useState, type CSSProperties } from "react";
 import { DemoGuide } from "@/components/demo-guide";
 import { NumberTicker } from "@/components/motion";
 import { When } from "@/components/time";
@@ -63,6 +63,13 @@ function fill(value: number, min: number, max: number) {
 
 export default function AgentsPage() {
   const mandate = useMandate();
+  const [saved, setSaved] = useState(false);
+  const savedTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  function markSaved() {
+    setSaved(true);
+    clearTimeout(savedTimer.current);
+    savedTimer.current = setTimeout(() => setSaved(false), 1600);
+  }
   const milestones = useMilestones();
   const decisions = milestones.filter((m) => m.agentDecision).map((m) => ({ m, d: m.agentDecision! }));
   const preview = agentReview(sampleCriteria, sampleResults, 1000, mandate);
@@ -90,7 +97,12 @@ export default function AgentsPage() {
                 <p className="font-display text-xl font-semibold text-ink">{mandate.name}</p>
                 <p className="text-sm text-dim">Acts for {mandate.owner} · connects over MCP</p>
               </div>
-              <Chip tone="brand">Client side</Chip>
+              <span className="flex items-center gap-2">
+                <span role="status" className={`text-xs text-mint transition-opacity duration-300 ${saved ? "opacity-100" : "opacity-0"}`}>
+                  Saved · applies to the next decisions
+                </span>
+                <Chip tone="brand">Client side</Chip>
+              </span>
             </div>
 
             <div className="mt-8 grid gap-8 sm:grid-cols-2">
@@ -108,7 +120,11 @@ export default function AgentsPage() {
                   max={5000}
                   step={100}
                   value={mandate.perMilestoneLimit}
-                  onChange={(e) => updateMandate({ perMilestoneLimit: Number(e.target.value) })}
+                  aria-valuetext={money(mandate.perMilestoneLimit)}
+                  onChange={(e) => {
+                    updateMandate({ perMilestoneLimit: Number(e.target.value) });
+                    markSaved();
+                  }}
                   className="range mt-4"
                   style={fill(mandate.perMilestoneLimit, 100, 5000)}
                 />
@@ -125,7 +141,11 @@ export default function AgentsPage() {
                   max={99}
                   step={1}
                   value={Math.round(mandate.minConfidence * 100)}
-                  onChange={(e) => updateMandate({ minConfidence: Number(e.target.value) / 100 })}
+                  aria-valuetext={`${Math.round(mandate.minConfidence * 100)} percent`}
+                  onChange={(e) => {
+                    updateMandate({ minConfidence: Number(e.target.value) / 100 });
+                    markSaved();
+                  }}
                   className="range mt-4"
                   style={fill(mandate.minConfidence * 100, 50, 99)}
                 />
@@ -138,14 +158,28 @@ export default function AgentsPage() {
                   <span className="block text-sm text-ink">Release verified work</span>
                   <span className="block text-xs text-dim">Capture the share the AI verified, from the PayPal hold</span>
                 </span>
-                <Toggle checked={mandate.releaseVerified} onChange={(v) => updateMandate({ releaseVerified: v })} label="Release verified work" />
+                <Toggle
+                  checked={mandate.releaseVerified}
+                  onChange={(v) => {
+                    updateMandate({ releaseVerified: v });
+                    markSaved();
+                  }}
+                  label="Release verified work"
+                />
               </li>
               <li className="flex items-center justify-between gap-4 py-4">
                 <span>
                   <span className="block text-sm text-ink">Fund new milestones</span>
                   <span className="block text-xs text-dim">{mandate.owner} still approves each PayPal hold once</span>
                 </span>
-                <Toggle checked={mandate.fundMilestones} onChange={(v) => updateMandate({ fundMilestones: v })} label="Fund new milestones" />
+                <Toggle
+                  checked={mandate.fundMilestones}
+                  onChange={(v) => {
+                    updateMandate({ fundMilestones: v });
+                    markSaved();
+                  }}
+                  label="Fund new milestones"
+                />
               </li>
               <li className="flex items-center justify-between gap-4 py-4 opacity-60">
                 <span>

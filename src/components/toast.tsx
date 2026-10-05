@@ -24,6 +24,13 @@ export function toast(title: string, body?: string, tone: Tone = "good") {
   setTimeout(() => dismiss(id), LIFETIME);
 }
 
+/** Called on every page change, so a toast never covers the next page's buttons. */
+export function clearToasts() {
+  if (toasts.length === 0) return;
+  toasts = [];
+  emit();
+}
+
 function dismiss(id: number) {
   toasts = toasts.filter((t) => t.id !== id);
   emit();

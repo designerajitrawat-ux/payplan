@@ -50,7 +50,7 @@ export function MilestoneShell({ children }: { children: (m: Milestone) => React
         </div>
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div className="min-w-0">
-            <h1 className="font-display text-3xl font-semibold tracking-tight text-balance text-ink font-stretch-semi-expanded sm:text-4xl">{m.title}</h1>
+            <h1 className="font-display text-2xl font-semibold tracking-tight text-balance text-ink font-stretch-semi-expanded sm:text-4xl">{m.title}</h1>
             <p className="mt-2 text-mute">
               {m.freelancerName} <span className="text-dim">· {m.freelancerLocation}</span> <span aria-hidden className="text-dim">→</span> {m.clientName}{" "}
               <span className="text-dim">·</span> <span className="font-medium text-ink">{money(m.amount)}</span>

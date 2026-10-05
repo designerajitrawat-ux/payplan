@@ -134,18 +134,23 @@ export function MoneyBar({ ledger, amount, labels = true }: { ledger: LedgerEntr
   );
 }
 
-export function Field({ label, hint, children }: { label: string; hint?: string; children: ReactNode }) {
+export function Field({ label, hint, error, children }: { label: string; hint?: string; error?: string | null; children: ReactNode }) {
   return (
     <label className="block">
       <span className="text-[13px] font-medium text-ink">{label}</span>
       {hint ? <span className="mt-0.5 block text-xs text-dim">{hint}</span> : null}
       <span className="mt-2 block">{children}</span>
+      {error ? (
+        <span role="alert" className="mt-1.5 block text-xs font-medium text-flare">
+          {error}
+        </span>
+      ) : null}
     </label>
   );
 }
 
 export const inputClass =
-  "w-full rounded-xl border border-brand-2/20 bg-deep/60 px-3.5 py-2.5 text-sm text-ink placeholder:text-dim transition focus:border-brand-2/70 focus:bg-deep/80 focus:outline-none focus:ring-4 focus:ring-brand/25";
+  "w-full rounded-xl border border-brand-2/20 bg-deep/60 px-3.5 py-2.5 text-sm text-ink placeholder:text-dim transition focus:border-brand-2/70 focus:bg-deep/80 focus:outline-none focus:ring-4 focus:ring-brand/25 aria-[invalid=true]:border-flare/70";
 
 export function Toggle({ checked, onChange, label, tone = "nova" }: { checked: boolean; onChange: (v: boolean) => void; label: string; tone?: "nova" | "mint" }) {
   return (

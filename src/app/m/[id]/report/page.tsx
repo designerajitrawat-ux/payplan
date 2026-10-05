@@ -276,11 +276,11 @@ function ReportView({ m }: { m: Milestone }) {
           {waiting > 0 ? ` and ${money(waiting)} waits for a fix.` : "."} {agentDecides ? `${names.client}'s agent decides next.` : ""}
         </DemoGuide>
       ) : m.status === "fix_window" ? (
-        <DemoGuide step={6} next={{ href: `/m/${m.id}/submit`, label: `Switch to ${names.freelancer} and fix` }}>
+        <DemoGuide step={7} next={{ href: `/m/${m.id}/submit`, label: `Switch to ${names.freelancer} and fix` }}>
           {money(totals.captured)} is released. The other {money(totals.held)} is still only a hold on {names.client}&apos;s PayPal while {names.freelancer} fixes it.
         </DemoGuide>
       ) : m.status === "released" ? (
-        <DemoGuide step={7} next={{ href: "/dashboard", label: "See all milestones" }}>
+        <DemoGuide step={9} next={{ href: "/dashboard", label: "See all milestones" }}>
           Paid as agreed: every criterion passed and the full amount was released, with a signed record of why.
         </DemoGuide>
       ) : null}

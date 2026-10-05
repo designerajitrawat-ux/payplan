@@ -183,9 +183,14 @@ export function HoldButton({ onComplete, children, duration = 1200, className = 
       <button
         type="button"
         aria-describedby={hintId}
-        onPointerDown={start}
+        onPointerDown={(e) => {
+          // Keep the pointer on this button until it is released, even if it drifts off the edge.
+          e.currentTarget.setPointerCapture(e.pointerId);
+          start();
+        }}
         onPointerUp={cancel}
-        onPointerLeave={cancel}
+        onPointerCancel={cancel}
+        onContextMenu={(e) => e.preventDefault()}
         onKeyDown={(e) => {
           if ((e.key === " " || e.key === "Enter") && !e.repeat) {
             e.preventDefault();
@@ -195,7 +200,7 @@ export function HoldButton({ onComplete, children, duration = 1200, className = 
         onKeyUp={(e) => {
           if (e.key === " " || e.key === "Enter") cancel();
         }}
-        className={`relative inline-flex h-13 select-none items-center justify-center overflow-hidden rounded-full bg-sun px-6 text-[15px] font-semibold text-void shadow-[0_0_0_1px_rgba(255,197,61,0.5),0_12px_34px_-10px_rgba(255,197,61,0.7)] transition active:scale-[0.98] ${hint ? "shake" : ""} ${className}`}
+        className={`relative inline-flex h-13 touch-none select-none items-center justify-center overflow-hidden rounded-full bg-sun px-6 text-[15px] font-semibold text-void shadow-[0_0_0_1px_rgba(255,197,61,0.5),0_12px_34px_-10px_rgba(255,197,61,0.7)] transition active:scale-[0.98] ${hint ? "shake" : ""} ${className}`}
       >
         <span aria-hidden className="absolute inset-0 origin-left bg-white/45" style={{ transform: `scaleX(${progress})` }} />
         <span className="relative flex items-center gap-2">
@@ -203,11 +208,11 @@ export function HoldButton({ onComplete, children, duration = 1200, className = 
             <circle cx="10" cy="10" r="7.5" fill="none" stroke="rgba(10,14,28,0.25)" strokeWidth="2.2" />
             <circle cx="10" cy="10" r="7.5" fill="none" stroke="currentColor" strokeWidth="2.2" strokeDasharray={`${progress * 47.1} 47.1`} strokeLinecap="round" />
           </svg>
-          {holding ? "Keep holding…" : children}
+          {children}
         </span>
       </button>
       <span id={hintId} role="status" className={`pl-2 text-xs transition-colors ${hint ? "text-sun" : "text-dim"}`}>
-        {hint ? "Hold it for a second. Nothing moved." : "Press and hold for one second"}
+        {hint ? "Hold it for a second. Nothing moved." : holding ? "Keep holding…" : "Press and hold for one second"}
       </span>
     </span>
   );

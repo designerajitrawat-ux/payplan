@@ -141,7 +141,7 @@ function SubmitForm({ m }: { m: Milestone }) {
         </Panel>
       </aside>
       {!m.walkthrough ? null : fixing ? (
-        <DemoGuide step={6}>
+        <DemoGuide step={7}>
           You are <strong>{names.freelancer}</strong> again. {money(totals.captured)} is released and {money(totals.held)} waits on the fix. Submit it and only the failed criterion is checked again.
         </DemoGuide>
       ) : (

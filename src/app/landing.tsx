@@ -62,7 +62,7 @@ function Chip({ i, step }: { i: number; step: number }) {
           <span className="size-2.5 animate-spin rounded-full border-2 border-nova/30 border-t-nova" />
         ) : null}
       </span>
-      <span className={`min-w-0 flex-1 truncate ${done || checking ? "text-ink" : "text-mute"}`}>{c.title}</span>
+      <span className={`min-w-0 flex-1 leading-snug ${done || checking ? "text-ink" : "text-mute"}`}>{c.title}</span>
       <span className={`font-mono text-xs ${failed ? "text-flare" : done ? "text-mint" : "text-dim"}`}>{failed ? "fix" : "$200"}</span>
     </motion.li>
   );

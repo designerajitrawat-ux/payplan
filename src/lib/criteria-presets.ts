@@ -116,11 +116,63 @@ export const logoPreset: Preset[] = [
 ];
 
 /** Simulated AI helper: picks criteria from a pasted brief. The real version calls the AI model. */
-export function suggestCriteria(brief: string): Preset[] {
+/** Criteria that fit almost any creative brief, for when the brief is not a website or a logo. */
+export const genericPreset: Preset[] = [
+  {
+    title: "Every agreed deliverable is handed over",
+    weight: 30,
+    mustPass: true,
+    evidence: "pdf",
+    check: "automatic",
+    demo: {
+      first: pass(0.99, "All files named in the brief were received", "Nothing that was agreed is missing."),
+      afterFix: pass(0.99, "All files named in the brief were received", "Nothing that was agreed is missing."),
+    },
+  },
+  {
+    title: "Matches what the brief asks for",
+    weight: 30,
+    mustPass: false,
+    evidence: "image",
+    check: "ai",
+    demo: {
+      first: pass(0.9, "Each request in the brief maps to delivered work", "The work covers every point in the brief."),
+      afterFix: pass(0.9, "Each request in the brief maps to delivered work", "The work covers every point in the brief."),
+    },
+  },
+  {
+    title: "Follows the brand or style guide",
+    weight: 20,
+    mustPass: false,
+    evidence: "image",
+    check: "ai",
+    demo: {
+      first: { verdict: "fail", confidence: 0.84, evidence: "2 of 8 items use colours outside the style guide", reason: "Two items use colours that are not in the style guide." },
+      afterFix: pass(0.88, "8 of 8 items use the style guide colours", "Every item now follows the style guide."),
+    },
+  },
+  {
+    title: "Delivered in the agreed sizes and formats",
+    weight: 20,
+    mustPass: false,
+    evidence: "image",
+    check: "automatic",
+    demo: {
+      first: pass(0.98, "Sizes and file types match the brief", "Every file has the agreed size and format."),
+      afterFix: pass(0.98, "Sizes and file types match the brief", "Every file has the agreed size and format."),
+    },
+  },
+];
+
+export type Suggestion = { kind: "website" | "logo" | "general"; criteria: Preset[] };
+
+/** Stands in for the AI helper: picks criteria from the brief, and says when it could only offer general ones. */
+export function suggestCriteria(brief: string): Suggestion {
   const text = brief.toLowerCase();
-  const isWebsite = ["landing", "website", "web page", "homepage"].some((w) => text.includes(w));
-  if (!isWebsite && (text.includes("logo") || text.includes("brand mark"))) return logoPreset;
-  return landingPagePreset;
+  const isWebsite = ["landing", "website", "web page", "webpage", "homepage", "site"].some((w) => text.includes(w));
+  if (isWebsite) return { kind: "website", criteria: landingPagePreset };
+  if (text.includes("logo") || text.includes("brand mark")) return { kind: "logo", criteria: logoPreset };
+  return { kind: "general", criteria: genericPreset };
 }
 
 export function genericCriterion(title: string): Preset {

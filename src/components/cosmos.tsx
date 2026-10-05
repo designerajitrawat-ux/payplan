@@ -392,12 +392,18 @@ export function ConfidenceRing({ value, tone = "mint" }: { value: number; tone?:
   const r = 14;
   const circ = 2 * Math.PI * r;
   return (
-    <span className="relative inline-grid size-10 shrink-0 place-items-center" title={`AI confidence ${Math.round(value * 100)}%`}>
+    <span className="relative inline-grid size-10 shrink-0 place-items-center" title={tone === "flare" ? `Not met · the AI is ${Math.round(value * 100)}% sure` : `AI confidence ${Math.round(value * 100)}%`}>
       <svg viewBox="0 0 36 36" className="absolute inset-0 -rotate-90" aria-hidden>
         <circle cx="18" cy="18" r={r} fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth="3" />
         <circle cx="18" cy="18" r={r} fill="none" stroke={`var(--color-${tone})`} strokeWidth="3" strokeLinecap="round" strokeDasharray={`${value * circ} ${circ}`} style={{ transition: "stroke-dasharray 900ms cubic-bezier(.16,1,.3,1)" }} />
       </svg>
-      <span className="font-mono text-[11px] text-ink">{Math.round(value * 100)}</span>
+      {tone === "flare" ? (
+        <svg viewBox="0 0 16 16" className="size-3.5 text-flare" role="img" aria-label="Not met">
+          <path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
+        </svg>
+      ) : (
+        <span className="font-mono text-[11px] text-ink">{Math.round(value * 100)}</span>
+      )}
     </span>
   );
 }

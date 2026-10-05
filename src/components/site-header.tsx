@@ -3,10 +3,10 @@
 import { MotionConfig, motion } from "motion/react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { finishVerification, resetDemo, useMilestones } from "@/lib/store";
 import { Starfield } from "./cosmos";
-import { toast, Toaster } from "./toast";
+import { clearToasts, Toaster } from "./toast";
 
 export function Logo({ compact = false }: { compact?: boolean }) {
   return (
@@ -49,11 +49,38 @@ const nav = [
   },
 ];
 
+/** Resetting wipes the demo, so it asks for a second click within three seconds. */
+function ResetButton({ className }: { className: string }) {
+  const router = useRouter();
+  const [armed, setArmed] = useState(false);
+  const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  return (
+    <button
+      type="button"
+      onClick={() => {
+        if (!armed) {
+          setArmed(true);
+          clearTimeout(timer.current);
+          timer.current = setTimeout(() => setArmed(false), 3000);
+          return;
+        }
+        clearTimeout(timer.current);
+        setArmed(false);
+        resetDemo();
+        router.push("/");
+      }}
+      className={`${className} ${armed ? "text-sun" : ""}`}
+    >
+      {armed ? "Click again to reset" : "Reset demo"}
+    </button>
+  );
+}
+
 function Sidebar() {
   const pathname = usePathname();
-  const router = useRouter();
   const milestones = useMilestones();
-  const waiting = milestones.filter((m) => m.status === "awaiting_decision" || m.status === "fix_window" || m.status === "funded").length;
+  // Same rule as the dashboard's "Your turn" tab, so the two numbers always match.
+  const waiting = milestones.filter((m) => m.status === "fix_window" || m.status === "funded").length;
 
   return (
     <nav aria-label="Main" className="flex flex-col gap-6 border-b border-brand-2/15 bg-deep/80 px-4 py-4 backdrop-blur-xl lg:sticky lg:top-0 lg:h-screen lg:w-64 lg:shrink-0 lg:border-b-0 lg:border-r lg:py-6">
@@ -63,17 +90,7 @@ function Sidebar() {
         </Link>
         <span className="flex items-center gap-2 lg:hidden">
           <span className="rounded-full bg-sun/10 px-2 py-0.5 font-mono text-[11px] uppercase tracking-widest text-sun ring-1 ring-inset ring-sun/25">Prototype</span>
-          <button
-            type="button"
-            onClick={() => {
-              resetDemo();
-              toast("Demo reset", "Example milestones are back to their first state.", "info");
-              router.push("/");
-            }}
-            className="inline-flex min-h-8 items-center rounded-lg px-2.5 text-xs font-medium text-dim transition hover:bg-white/[0.06] hover:text-ink"
-          >
-            Reset
-          </button>
+          <ResetButton className="inline-flex min-h-8 items-center rounded-lg px-2.5 text-xs font-medium text-dim transition hover:bg-white/[0.06] hover:text-ink" />
         </span>
       </div>
       <ul className="-mx-1 flex gap-1 overflow-x-auto px-1 lg:flex-col">
@@ -104,7 +121,11 @@ function Sidebar() {
                 ) : (
                   item.label
                 )}
-                {item.href === "/dashboard" && waiting > 0 ? <span className="ml-auto rounded-full bg-brand px-1.5 text-xs font-semibold text-white">{waiting}</span> : null}
+                {item.href === "/dashboard" && waiting > 0 ? (
+                  <span className="ml-auto rounded-full bg-brand px-1.5 text-xs font-semibold text-white" aria-label={`${waiting} waiting on you`}>
+                    {waiting}
+                  </span>
+                ) : null}
               </Link>
             </li>
           );
@@ -118,17 +139,7 @@ function Sidebar() {
           </p>
           <p className="mt-1">No real money moves. Phase 1 switches every payment to the PayPal sandbox.</p>
         </div>
-        <button
-          type="button"
-          onClick={() => {
-            resetDemo();
-            toast("Demo reset", "Example milestones are back to their first state.", "info");
-            router.push("/");
-          }}
-          className="rounded-xl px-3 py-2 text-left text-xs font-medium text-dim transition hover:bg-white/[0.04] hover:text-ink"
-        >
-          Reset demo
-        </button>
+        <ResetButton className="min-h-9 rounded-xl px-3 py-2 text-left text-xs font-medium text-dim transition hover:bg-white/[0.04] hover:text-ink" />
       </div>
     </nav>
   );
@@ -142,10 +153,10 @@ function MarketingHeader() {
           <Logo />
         </Link>
         <nav className="flex items-center gap-1 text-sm text-mute">
-          <a href="#how" className="hidden rounded-full px-3 py-1.5 transition hover:text-ink sm:inline">
+          <a href="#how" className="inline-flex min-h-9 items-center rounded-full px-3 transition hover:text-ink">
             How it works
           </a>
-          <a href="#try" className="hidden rounded-full px-3 py-1.5 transition hover:text-ink sm:inline">
+          <a href="#try" className="hidden min-h-9 items-center rounded-full px-3 transition hover:text-ink sm:inline-flex">
             Try it
           </a>
           <Link href="/dashboard" className="rounded-full border border-white/10 px-3.5 py-1.5 text-ink transition hover:border-white/25 hover:bg-white/5">
@@ -178,6 +189,12 @@ function BackgroundChecks() {
   return null;
 }
 
+function ClearToastsOnNavigate() {
+  const pathname = usePathname();
+  useEffect(() => clearToasts(), [pathname]);
+  return null;
+}
+
 function SkipLink() {
   return (
     <button
@@ -199,6 +216,7 @@ export function Chrome({ children }: { children: ReactNode }) {
       <div className="grain relative isolate min-h-screen">
         <SkipLink />
         <BackgroundChecks />
+        <ClearToastsOnNavigate />
         <Starfield />
         {landing ? (
           <>
@@ -220,7 +238,7 @@ export function Chrome({ children }: { children: ReactNode }) {
                 id="content"
                 tabIndex={-1}
                 initial={{ opacity: 0, y: 14, filter: "blur(6px)" }}
-                animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+                animate={{ opacity: 1, y: 0, filter: "blur(0px)", transitionEnd: { filter: "none", transform: "none" } }}
                 transition={{ type: "spring", bounce: 0, duration: 0.5 }}
                 className="mx-auto w-full max-w-6xl px-4 pb-44 pt-6 outline-none sm:px-8 lg:pt-10"
               >

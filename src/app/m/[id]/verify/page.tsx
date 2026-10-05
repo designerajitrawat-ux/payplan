@@ -138,7 +138,7 @@ function Verifier({ m }: { m: Milestone }) {
             </div>
           </dl>
         </Panel>
-        <Panel className="flex flex-col justify-center">
+        <Panel className="hidden flex-col justify-center lg:flex">
           <Constellation states={rows.map((r) => r.state)} />
           <p className="mt-2 text-center text-xs text-dim">Each star is a criterion. Lines join once both ends are checked.</p>
         </Panel>
@@ -173,7 +173,7 @@ function Verifier({ m }: { m: Milestone }) {
           </ol>
         </section>
 
-        <section aria-label="Criteria" className="min-w-0 space-y-2.5">
+        <section aria-label="Criteria" className="order-first min-w-0 space-y-2.5 lg:order-none">
           {rows.map(({ c, result, done, checking, carried }) => (
             <article
               key={c.id}
@@ -207,7 +207,7 @@ function Verifier({ m }: { m: Milestone }) {
       ) : null}
 
       {m.walkthrough ? (
-        <DemoGuide step={attempt > 1 ? 6 : 4} next={running ? undefined : { href: `/m/${m.id}/report`, label: "Open the report" }}>
+        <DemoGuide step={attempt > 1 ? 8 : 4} next={running ? undefined : { href: `/m/${m.id}/report`, label: "Open the report" }}>
           {attempt > 1
             ? "Only the criterion that failed is checked again. When it passes, the remaining share is released automatically, as agreed in the spec."
             : "Watch the checker work. In the real app it opens the live URL in a browser, takes screenshots, runs tests and asks the AI rubric, then signs the report."}

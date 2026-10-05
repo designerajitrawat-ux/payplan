@@ -4,7 +4,6 @@ import { AnimatePresence, motion } from "motion/react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
 import { DemoGuide } from "@/components/demo-guide";
-import { NumberTicker } from "@/components/motion";
 import { Arrow, Button, Chip, Eyebrow, Field, Panel, RoleChip, Toggle, inputClass } from "@/components/ui";
 import { genericCriterion, suggestCriteria } from "@/lib/criteria-presets";
 import { money } from "@/lib/format";
@@ -15,6 +14,8 @@ type Draft = Omit<Criterion, "id"> & { key: number };
 
 const DEMO_BRIEF =
   "Landing page for Northwind's new budgeting app. Use the approved headline \"Know where every rupee goes\" and the button \"Join the waitlist\". Must work on phones, include a working contact form, and follow our style guide (colours and logo attached).";
+
+const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 const evidenceLabels: Record<EvidenceType, string> = {
   url: "Live URL",
@@ -44,24 +45,64 @@ export function SpecBuilder() {
   const [brief, setBrief] = useState(demo ? DEMO_BRIEF : "");
   const [criteria, setCriteria] = useState<Draft[]>([]);
   const [suggesting, setSuggesting] = useState(false);
+  const [confirmReplace, setConfirmReplace] = useState(false);
+  const [draftNote, setDraftNote] = useState<string | null>(null);
+  const [showErrors, setShowErrors] = useState(false);
 
   const totalWeight = criteria.reduce((s, c) => s + (Number.isFinite(c.weight) ? c.weight : 0), 0);
   const hasGate = criteria.some((c) => c.mustPass);
-  const problems = [
-    !title.trim() && "Add a milestone title.",
-    !(amount > 0) && "Set an amount above $0.",
-    criteria.length === 0 && "Add at least one criterion.",
-    criteria.some((c) => !c.title.trim()) && "Every criterion needs a title.",
-    criteria.length > 0 && totalWeight !== 100 && `Weights add up to ${totalWeight}%. They must total 100%.`,
-  ].filter(Boolean) as string[];
+  const errors = {
+    title: !title.trim() ? "Add a milestone title." : null,
+    clientEmail: !EMAIL.test(clientEmail.trim()) ? "Enter the client's email, like sam@company.com. The PayPal funding link goes there." : null,
+    amount: !(amount > 0) ? "Set an amount above $0." : null,
+    criteria:
+      criteria.length === 0
+        ? "Add at least one criterion."
+        : criteria.some((c) => !c.title.trim())
+          ? "Every criterion needs a title."
+          : totalWeight !== 100
+            ? `Weights add up to ${totalWeight}%. They must total 100%.`
+            : null,
+  };
+  const problems = Object.values(errors).filter(Boolean) as string[];
 
-  function suggest() {
+  function suggest(mode: "replace" | "add" = "replace") {
+    if (mode === "replace" && criteria.length > 0 && !confirmReplace) {
+      setConfirmReplace(true);
+      return;
+    }
+    setConfirmReplace(false);
     setSuggesting(true);
-    setCriteria([]);
+    setDraftNote(null);
+    if (mode === "replace") setCriteria([]);
     setTimeout(() => {
-      setCriteria(suggestCriteria(brief).map((c) => ({ ...c, key: nextKey++ })));
+      const suggestion = suggestCriteria(brief);
+      const drafted = suggestion.criteria.map((c) => ({ ...c, key: nextKey++ }));
+      setCriteria((list) => (mode === "add" ? [...list, ...drafted] : drafted));
+      setDraftNote(
+        suggestion.kind === "general"
+          ? "This brief did not match a template, so the AI drafted general criteria. Edit them so they describe this job."
+          : mode === "add"
+            ? "Drafted criteria were added below yours. Use Split evenly to fix the weights."
+            : "Drafted from the brief. Check the wording and the weights before you create.",
+      );
       setSuggesting(false);
     }, 1200);
+  }
+
+  function addCriterion() {
+    // A new criterion starts with whatever weight is still unassigned.
+    setCriteria((list) => [...list, { ...genericCriterion(""), weight: Math.max(0, 100 - list.reduce((s, c) => s + c.weight, 0)), key: nextKey++ }]);
+  }
+
+  function tryCreate() {
+    if (problems.length > 0) {
+      setShowErrors(true);
+      const first = errors.title ? "f-title" : errors.clientEmail ? "f-email" : errors.amount ? "f-amount" : "f-criteria";
+      document.getElementById(first)?.focus();
+      return;
+    }
+    create();
   }
 
   /** Gives every criterion the same weight; any remainder goes to the first ones so the total is exactly 100. */
@@ -109,18 +150,18 @@ export function SpecBuilder() {
             <h2 className="font-display text-lg font-semibold">Basics</h2>
             <div className="mt-5 grid gap-5 sm:grid-cols-2">
               <div className="sm:col-span-2">
-                <Field label="Milestone title">
-                  <input className={inputClass} value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Landing page for …" />
+                <Field label="Milestone title" error={showErrors ? errors.title : null}>
+                  <input id="f-title" className={inputClass} aria-invalid={showErrors && !!errors.title} value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Landing page for …" />
                 </Field>
               </div>
               <Field label="Client name">
                 <input className={inputClass} value={clientName} onChange={(e) => setClientName(e.target.value)} />
               </Field>
-              <Field label="Client email" hint="The PayPal funding link goes here.">
-                <input className={inputClass} type="email" value={clientEmail} onChange={(e) => setClientEmail(e.target.value)} />
+              <Field label="Client email" hint="The PayPal funding link goes here." error={showErrors ? errors.clientEmail : null}>
+                <input id="f-email" className={inputClass} type="email" inputMode="email" autoComplete="email" aria-invalid={showErrors && !!errors.clientEmail} value={clientEmail} onChange={(e) => setClientEmail(e.target.value)} placeholder="sam@company.com" />
               </Field>
-              <Field label="Amount (USD)">
-                <input className={inputClass} type="number" min={1} value={amount || ""} onChange={(e) => setAmount(Number(e.target.value))} />
+              <Field label="Amount (USD)" error={showErrors ? errors.amount : null}>
+                <input id="f-amount" className={inputClass} type="number" inputMode="decimal" min={1} aria-invalid={showErrors && !!errors.amount} value={amount || ""} onChange={(e) => setAmount(Math.max(0, Number(e.target.value)))} placeholder="1000" />
               </Field>
               <Field label="Client review window" hint="If the client stays silent, the verified share is released after this.">
                 <select className={inputClass} value={reviewWindowHours} onChange={(e) => setReviewWindowHours(Number(e.target.value))}>
@@ -141,7 +182,7 @@ export function SpecBuilder() {
             </div>
             <p className="mt-1 text-sm text-mute">Paste the client&apos;s brief. The AI drafts criteria; you edit and approve them.</p>
             <textarea className={`${inputClass} mt-4 min-h-28 leading-relaxed`} value={brief} onChange={(e) => setBrief(e.target.value)} placeholder="Paste the brief or message from the client…" />
-            <Button className="mt-4" variant="agent" onClick={suggest} disabled={suggesting || !brief.trim()}>
+            <Button className="mt-4" variant="agent" onClick={() => suggest("replace")} disabled={suggesting || !brief.trim()}>
               {suggesting ? (
                 <>
                   <span className="size-3.5 animate-spin rounded-full border-2 border-void/25 border-t-void" aria-hidden />
@@ -156,11 +197,33 @@ export function SpecBuilder() {
                 </>
               )}
             </Button>
+            {confirmReplace ? (
+              <div role="alertdialog" aria-label="Replace your criteria?" className="mt-4 flex flex-wrap items-center gap-2 rounded-2xl border border-sun/25 bg-sun/[0.06] p-3.5 text-sm">
+                <span className="mr-auto text-ink">You already have {criteria.length} criteria. Replace them?</span>
+                <Button size="sm" variant="secondary" onClick={() => suggest("add")}>
+                  Add to mine
+                </Button>
+                <Button size="sm" variant="danger" onClick={() => suggest("replace")}>
+                  Replace
+                </Button>
+                <Button size="sm" variant="ghost" onClick={() => setConfirmReplace(false)}>
+                  Cancel
+                </Button>
+              </div>
+            ) : null}
+            {draftNote ? (
+              <p role="status" className="mt-3 flex gap-2 text-[13px] text-mute">
+                <span className="mt-1.5 size-1.5 shrink-0 rounded-full bg-nova" />
+                {draftNote}
+              </p>
+            ) : null}
           </Panel>
 
           <Panel>
             <div className="flex flex-wrap items-center justify-between gap-2">
-              <h2 className="font-display text-lg font-semibold">Acceptance criteria</h2>
+              <h2 id="f-criteria" tabIndex={-1} className="font-display text-lg font-semibold outline-none">
+                Acceptance criteria
+              </h2>
               <span className="flex items-center gap-2">
                 <span className={`font-mono text-xs tabular-nums ${totalWeight === 100 ? "text-mint" : "text-sun"}`}>Weights: {totalWeight}% of 100%</span>
                 {criteria.length > 0 && totalWeight !== 100 ? (
@@ -174,6 +237,11 @@ export function SpecBuilder() {
               Each passed criterion releases its weight. A <span className="text-ink">must-pass</span> criterion that fails releases nothing until it is fixed.
             </p>
 
+            {showErrors && errors.criteria ? (
+              <p role="alert" className="mt-3 text-[13px] font-medium text-flare">
+                {errors.criteria}
+              </p>
+            ) : null}
             <div className="mt-5 flex h-2 w-full gap-1 overflow-hidden rounded-full bg-white/[0.04]" aria-hidden>
               {criteria.map((c, i) => (
                 <span key={c.key} className={`h-full rounded-full transition-[flex-grow] duration-700 ease-out-expo ${segmentShades[i % segmentShades.length]}`} style={{ flexGrow: Math.max(0, c.weight), flexBasis: 0 }} title={c.title} />
@@ -205,10 +273,10 @@ export function SpecBuilder() {
                         <span className={`mt-2.5 size-2 shrink-0 rounded-full ${segmentShades[i % segmentShades.length]}`} />
                         <div className="min-w-0 flex-1 space-y-3">
                           <input className={inputClass} aria-label={`Criterion ${i + 1} title`} value={c.title} onChange={(e) => change(c.key, { title: e.target.value })} placeholder="What must be true?" />
-                          <div className="flex flex-wrap items-center gap-x-4 gap-y-3 text-[13px]">
+                          <div className="grid grid-cols-1 gap-3 text-[13px] sm:flex sm:flex-wrap sm:items-center sm:gap-x-4">
                             <label className="flex items-center gap-2">
                               <span className="whitespace-nowrap text-dim">Evidence</span>
-                              <select className={`${inputClass} w-auto py-1.5`} value={c.evidence} onChange={(e) => change(c.key, { evidence: e.target.value as EvidenceType })}>
+                              <select className={`${inputClass} w-full py-1.5 sm:w-auto`} value={c.evidence} onChange={(e) => change(c.key, { evidence: e.target.value as EvidenceType })}>
                                 {Object.entries(evidenceLabels).map(([value, label]) => (
                                   <option key={value} value={value}>
                                     {label}
@@ -218,14 +286,14 @@ export function SpecBuilder() {
                             </label>
                             <label className="flex items-center gap-2">
                               <span className="whitespace-nowrap text-dim">Checked by</span>
-                              <select className={`${inputClass} w-auto py-1.5`} value={c.check} onChange={(e) => change(c.key, { check: e.target.value as Draft["check"] })}>
+                              <select className={`${inputClass} w-full py-1.5 sm:w-auto`} value={c.check} onChange={(e) => change(c.key, { check: e.target.value as Draft["check"] })}>
                                 <option value="automatic">Automatic test</option>
                                 <option value="ai">AI rubric</option>
                               </select>
                             </label>
                             <label className="flex items-center gap-2">
                               <span className="whitespace-nowrap text-dim">Weight</span>
-                              <input className={`${inputClass} w-20 py-1.5`} type="number" min={0} max={100} value={c.weight} onChange={(e) => change(c.key, { weight: Number(e.target.value) })} />
+                              <input className={`${inputClass} w-20 py-1.5`} type="number" min={0} max={100} value={c.weight} onChange={(e) => change(c.key, { weight: Math.min(100, Math.max(0, Math.round(Number(e.target.value) || 0))) })} />
                               <span className="text-dim">%</span>
                             </label>
                             <span className="flex items-center gap-2">
@@ -250,7 +318,7 @@ export function SpecBuilder() {
                 </AnimatePresence>
               </ul>
             )}
-            <Button className="mt-4" variant="ghost" size="sm" onClick={() => setCriteria((list) => [...list, { ...genericCriterion(""), key: nextKey++ }])}>
+            <Button className="mt-4" variant="ghost" size="sm" onClick={addCriterion}>
               + Add criterion
             </Button>
           </Panel>
@@ -259,8 +327,8 @@ export function SpecBuilder() {
         <aside className="min-w-0 lg:sticky lg:top-8 lg:self-start">
           <Panel>
             <Eyebrow>Summary</Eyebrow>
-            <p className="mt-3 font-display text-4xl font-semibold tracking-tight text-ink font-stretch-semi-expanded">
-              <NumberTicker value={amount || 0} duration={500} />
+            <p className="mt-3 font-sans text-4xl font-semibold tracking-tight text-ink font-stretch-semi-expanded">
+              {money(amount || 0)}
             </p>
             <dl className="mt-5 space-y-2.5 text-sm">
               {[
@@ -276,17 +344,17 @@ export function SpecBuilder() {
               ))}
             </dl>
             {problems.length > 0 ? (
-              <ul className="mt-5 space-y-1.5 rounded-2xl border border-sun/20 bg-sun/[0.06] p-3.5 text-xs text-sun">
+              <ul id="create-status" className="mt-5 space-y-1.5 rounded-2xl border border-sun/20 bg-sun/[0.06] p-3.5 text-xs text-sun">
                 {problems.map((p) => (
                   <li key={p}>{p}</li>
                 ))}
               </ul>
             ) : !hasGate ? (
-              <p className="mt-5 rounded-2xl border border-ice/20 bg-ice/[0.06] p-3.5 text-xs text-ice">Tip: mark at least one criterion as must-pass, such as &quot;page is live&quot;.</p>
+              <p className="mt-5 rounded-2xl border border-ice/20 bg-ice/[0.06] p-3.5 text-xs text-ice">Tip: mark at least one criterion as must-pass, such as &quot;every deliverable is handed over&quot;.</p>
             ) : (
               <p className="mt-5 rounded-2xl border border-mint/20 bg-mint/[0.06] p-3.5 text-xs text-mint">Ready. {money(amount)} splits across {criteria.length} criteria.</p>
             )}
-            <Button className="group mt-5 w-full" size="lg" onClick={create} disabled={problems.length > 0}>
+            <Button className="group mt-5 w-full" size="lg" onClick={tryCreate} aria-describedby="create-status">
               Create and get funding link
               <Arrow />
             </Button>

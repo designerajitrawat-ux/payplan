@@ -52,6 +52,7 @@ export default function Dashboard() {
   const milestones = useMilestones();
   const [filter, setFilter] = useState<Filter>("all");
   const shown = milestones.filter(groups[filter]);
+  const finishedTour = milestones.find((m) => m.walkthrough && m.status === "released");
   const totals = milestones.map((m) => ledgerTotals(m.ledger));
   const held = totals.reduce((s, t) => s + t.held, 0);
   const released = totals.reduce((s, t) => s + t.captured, 0);
@@ -220,9 +221,15 @@ export default function Dashboard() {
         </Panel>
       </div>
 
-      <DemoGuide step="tour" next={{ href: "/new?demo=1", label: "Start the walkthrough" }}>
-        These are example milestones. One was bought by Sam&apos;s AI agent, which released the verified 80% on its own. Start the walkthrough to create your own.
-      </DemoGuide>
+      {finishedTour ? (
+        <DemoGuide step="tour" next={{ href: "/agents", label: "Open the Agents page" }}>
+          You finished the walkthrough: <strong>{money(finishedTour.amount)}</strong> was released criterion by criterion. Next, change the agent&apos;s limits and watch its decisions flip.
+        </DemoGuide>
+      ) : (
+        <DemoGuide step="tour" next={{ href: "/new?demo=1", label: "Start the walkthrough" }}>
+          These are example milestones. One was bought by Sam&apos;s AI agent, which released the verified 80% on its own. Start the walkthrough to create your own.
+        </DemoGuide>
+      )}
     </div>
   );
 }

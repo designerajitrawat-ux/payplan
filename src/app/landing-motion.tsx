@@ -322,7 +322,7 @@ export function Bento() {
               <div key={r.title} className="flex items-center gap-3 text-xs text-mute">
                 <span className={`size-2 rounded-full ${r.pass ? "bg-mint" : "bg-flare"}`} />
                 <span className="truncate">{r.title}</span>
-                <span className={`ml-auto font-mono ${r.pass ? "text-mint" : "text-flare"}`}>{Math.round(r.c * 100)}%</span>
+                <span className={`ml-auto font-mono ${r.pass ? "text-mint" : "text-flare"}`}>{r.pass ? `${Math.round(r.c * 100)}%` : "not met"}</span>
               </div>
             ))}
           </div>
