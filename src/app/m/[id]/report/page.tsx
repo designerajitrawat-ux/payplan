@@ -1,205 +1,283 @@
 "use client";
 
+import { ConfidenceRing } from "@/components/cosmos";
 import { DemoGuide } from "@/components/demo-guide";
+import { MilestoneOrbit } from "@/components/milestone-orbit";
 import { MilestoneShell, partyNames } from "@/components/milestone-shell";
+import { CopyButton, NumberTicker, trackSpotlight } from "@/components/motion";
 import { Countdown, When } from "@/components/time";
-import { Badge, Button, ButtonLink, Card, MoneyBar, RoleChip, VerdictBadge } from "@/components/ui";
+import { Arrow, Button, ButtonLink, Chip, Eyebrow, Panel, RoleChip, VerdictChip } from "@/components/ui";
+import { activityFor, type Actor } from "@/lib/activity";
 import { ledgerTotals, releasableAmount } from "@/lib/decision";
 import { money, shortHash } from "@/lib/format";
 import { voidRemainder } from "@/lib/store";
+import { stagger } from "@/lib/style";
 import type { Criterion, CriterionResult, Milestone } from "@/lib/types";
 
 function EvidenceThumb({ criterion, result }: { criterion: Criterion; result: CriterionResult }) {
   const bad = result.verdict !== "pass";
-  if (criterion.evidence !== "url" && criterion.evidence !== "image") return null;
   const mobile = criterion.title.toLowerCase().includes("mobile");
   return (
-    <div className={`shrink-0 overflow-hidden rounded-lg border ${bad ? "border-rose-200" : "border-slate-200"} bg-slate-50 ${mobile ? "h-24 w-12" : "h-16 w-24"}`} aria-hidden>
-      <div className={`h-2 ${bad ? "bg-rose-200" : "bg-teal-200"}`} />
-      <div className="space-y-1 p-1.5">
-        <div className="h-1.5 w-3/4 rounded bg-slate-300" />
-        <div className="h-1.5 w-1/2 rounded bg-slate-200" />
-        <div className={`mt-1.5 h-2.5 w-8 rounded ${bad ? "bg-rose-300" : "bg-teal-500"}`} />
+    <div className={`relative grid h-24 shrink-0 place-items-center overflow-hidden rounded-2xl border ${bad ? "border-flare/25 bg-flare/[0.05]" : "border-white/[0.07] bg-white/[0.03]"}`} aria-hidden>
+      <div className={`overflow-hidden rounded-lg border border-white/10 bg-void/70 p-1.5 ${mobile ? "h-20 w-11" : "h-16 w-28"}`}>
+        <div className={`h-1.5 w-1/2 rounded ${bad ? "bg-flare/50" : "bg-white/25"}`} />
+        <div className="mt-1.5 h-1 w-3/4 rounded bg-white/15" />
+        <div className="mt-1 h-1 w-2/3 rounded bg-white/10" />
+        <div className={`mt-2 h-2.5 w-8 rounded ${bad ? "bg-flare/60" : "bg-nova/70"}`} />
       </div>
+      {bad ? <span className="absolute bottom-2 right-2 rounded-md bg-flare px-1.5 py-0.5 font-mono text-[10px] font-semibold text-void">500</span> : null}
     </div>
   );
+}
+
+const actorDot: Record<Actor, string> = { freelancer: "bg-sun", client: "bg-ice", agent: "bg-nova", verifier: "bg-nova", paypal: "bg-mint" };
+
+function apiTrail(m: Milestone, releasable: number) {
+  const rows: { method: string; path: string; result: string; tone: "good" | "wait" }[] = [];
+  for (const e of m.ledger) {
+    if (e.kind === "authorization") {
+      rows.push({ method: "POST", path: "/v2/checkout/orders · intent AUTHORIZE", result: "201 created", tone: "good" });
+      rows.push({ method: "POST", path: `/v2/checkout/orders/{id}/authorize · ${money(e.amount)}`, result: e.id, tone: "good" });
+    }
+    if (e.kind === "capture") rows.push({ method: "POST", path: `/v2/payments/authorizations/{id}/capture · ${money(e.amount)}`, result: e.id, tone: "good" });
+    if (e.kind === "void") rows.push({ method: "POST", path: `/v2/payments/authorizations/{id}/void · ${money(e.amount)}`, result: e.id, tone: "good" });
+  }
+  if (m.status === "awaiting_decision" && releasable > 0) rows.push({ method: "POST", path: `/v2/payments/authorizations/{id}/capture · ${money(releasable)}`, result: "waits for decision", tone: "wait" });
+  if (m.status === "fix_window") rows.push({ method: "HOOK", path: "re-check the fix, then capture the rest", result: "waiting", tone: "wait" });
+  return rows;
 }
 
 function ReportView({ m }: { m: Milestone }) {
   const report = m.reports.at(-1);
   if (!report) {
     return (
-      <Card>
-        <p className="text-sm text-slate-600">No report yet. The report appears after the work is submitted and verified.</p>
+      <Panel>
+        <p className="text-sm text-mute">No report yet. It appears after the work is submitted and checked.</p>
         <ButtonLink href={`/m/${m.id}`} variant="secondary" className="mt-4">
           Go to the current step
         </ButtonLink>
-      </Card>
+      </Panel>
     );
   }
   const passed = report.results.filter((r) => r.verdict === "pass").length;
   const names = partyNames(m);
   const totals = ledgerTotals(m.ledger);
-  const releasable = releasableAmount(m.criteria, report.results, totals.authorized || m.amount);
-  const waiting = Math.max(0, Math.round(((totals.authorized || m.amount) - releasable) * 100) / 100);
+  const authorized = totals.authorized || m.amount;
+  const releasable = releasableAmount(m.criteria, report.results, authorized);
+  const waiting = Math.max(0, Math.round((authorized - releasable) * 100) / 100);
+  const failedCriteria = m.criteria.filter((c) => report.results.find((r) => r.criterionId === c.id)?.verdict !== "pass");
+  const passedCriteria = m.criteria.filter((c) => report.results.find((r) => r.criterionId === c.id)?.verdict === "pass");
+  const agentDecides = m.approval === "agent" && m.status === "awaiting_decision";
+
+  const headline =
+    m.status === "awaiting_decision" || m.status === "appealed"
+      ? { value: releasable, label: `can be released to ${names.freelancer}` }
+      : m.status === "closed"
+        ? { value: totals.captured, label: `paid to ${names.freelancer}; the rest went back` }
+        : { value: totals.captured, label: m.status === "released" ? `paid to ${names.freelancer} in full` : `released to ${names.freelancer}` };
 
   return (
-    <div className="grid gap-6 lg:grid-cols-[1fr_340px]">
-      <div className="min-w-0 space-y-6">
-        <RoleChip role="both" />
-        <Card className="border-teal-200 bg-teal-50/40">
-          <p className="text-sm font-semibold text-teal-800">Acceptance report · attempt {report.attempt}</p>
-          <h2 className="mt-1 text-2xl font-bold">
-            {passed} of {report.results.length} criteria passed
-          </h2>
-          <p className="mt-1 text-slate-700">
-            {money(releasable)} {m.status === "awaiting_decision" ? "can be released" : "verified"} · {money(waiting)} {waiting > 0 ? "waits for a fix" : "outstanding"}
+    <div className="min-w-0 space-y-6">
+      <RoleChip role="both" />
+
+      <Panel className="grid gap-8 p-6 sm:p-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)] lg:items-center">
+        <div className="min-w-0">
+          <Eyebrow>Acceptance report · attempt {report.attempt}</Eyebrow>
+          <p className="mt-4 font-display text-6xl font-semibold tracking-tight text-ink font-stretch-semi-expanded">
+            <NumberTicker value={headline.value} from={0} duration={1300} />
           </p>
-          <div className="mt-5">
-            <MoneyBar ledger={m.ledger} amount={m.amount} />
-          </div>
-        </Card>
+          <p className="mt-1 text-mute">{headline.label}</p>
+          <p className="mt-4 text-sm text-mute">
+            <span className="text-ink">
+              {passed} of {report.results.length} criteria passed
+            </span>
+            {waiting > 0 && m.status !== "closed" ? ` · ${money(waiting)} waits for a fix` : null}
+          </p>
 
-        <Card>
-          <h2 className="font-semibold">Evidence per criterion</h2>
-          <ul className="mt-4 space-y-4">
-            {m.criteria.map((c) => {
-              const r = report.results.find((x) => x.criterionId === c.id);
-              if (!r) return null;
-              return (
-                <li key={c.id} className="flex gap-4 rounded-xl border border-slate-200 p-4">
-                  <EvidenceThumb criterion={c} result={r} />
-                  <div className="min-w-0 flex-1">
-                    <div className="flex flex-wrap items-center justify-between gap-2">
-                      <p className="font-medium">{c.title}</p>
-                      <VerdictBadge verdict={r.verdict} />
-                    </div>
-                    <p className="mt-1 text-sm text-slate-600">{r.reason}</p>
-                    <p className="mt-2 text-xs text-slate-500">Evidence: {r.evidence}</p>
-                    <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-slate-500">
-                      <Badge tone={c.check === "ai" ? "brand" : "neutral"}>{c.check === "ai" ? "AI rubric" : "Automatic test"}</Badge>
-                      <span>Weight {c.weight}%</span>
-                      {c.mustPass ? <Badge tone="warn">Must pass</Badge> : null}
-                      <span>Confidence {Math.round(r.confidence * 100)}%</span>
-                    </div>
-                  </div>
-                </li>
-              );
-            })}
-          </ul>
-        </Card>
-
-        <Card>
-          <h2 className="font-semibold">PayPal records</h2>
-          <div className="mt-3 overflow-x-auto">
-            <table className="w-full min-w-[560px] text-left text-sm">
-              <thead className="text-xs uppercase tracking-wide text-slate-500">
-                <tr>
-                  <th className="py-2 pr-4">Type</th>
-                  <th className="py-2 pr-4">Amount</th>
-                  <th className="py-2 pr-4">PayPal ID</th>
-                  <th className="py-2 pr-4">When</th>
-                  <th className="py-2">Why</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {m.ledger.map((e) => (
-                  <tr key={e.id}>
-                    <td className="py-2 pr-4 capitalize">{e.kind}</td>
-                    <td className="py-2 pr-4 tabular-nums">{money(e.amount)}</td>
-                    <td className="py-2 pr-4 font-mono text-xs">{e.id}</td>
-                    <td className="py-2 pr-4 whitespace-nowrap">
-                      <When at={e.at} />
-                    </td>
-                    <td className="py-2 text-slate-600">{e.note}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </Card>
-      </div>
-
-      <aside className="min-w-0 space-y-4">
-        <Card>
-          {m.status === "awaiting_decision" ? (
-            <>
-              <p className="text-sm text-slate-500">Client review window</p>
-              <p className="mt-1 text-2xl font-bold">
-                <Countdown to={m.decisionDueAt} />
-              </p>
-              <p className="mt-2 text-sm text-slate-600">If {names.client} does not reply in time, the verified {money(releasable)} is released automatically.</p>
-              <ButtonLink href={`/m/${m.id}/decide`} className="mt-4 w-full">
-                Continue as {names.client}: decide
-              </ButtonLink>
-            </>
-          ) : m.status === "fix_window" ? (
-            <>
-              <p className="text-sm text-slate-500">Fix window</p>
-              <p className="mt-1 text-2xl font-bold">
-                <Countdown to={m.fixDueAt} />
-              </p>
-              <p className="mt-2 text-sm text-slate-600">{money(totals.held)} stays on the client&apos;s PayPal until the failed criteria pass or the window ends.</p>
-              <ButtonLink href={`/m/${m.id}/submit`} className="mt-4 w-full">
-                Continue as {names.freelancer}: submit a fix
-              </ButtonLink>
-              <Button variant="ghost" className="mt-2 w-full" onClick={() => voidRemainder(m.id)}>
-                Simulate: fix window ends
-              </Button>
-            </>
-          ) : m.status === "appealed" ? (
-            <>
-              <Badge tone="bad">Under appeal</Badge>
-              <p className="mt-3 text-sm text-slate-600">Nothing is released until a person reviews the appeal.</p>
-              <ButtonLink href={`/m/${m.id}/decide`} variant="secondary" className="mt-4 w-full">
+          <div className="mt-6 flex flex-wrap items-center gap-3">
+            {m.status === "awaiting_decision" ? (
+              agentDecides ? (
+                <ButtonLink href={`/m/${m.id}/decide`} variant="agent" className="group">
+                  Watch {names.client}&apos;s agent decide
+                  <Arrow />
+                </ButtonLink>
+              ) : (
+                <ButtonLink href={`/m/${m.id}/decide`} className="group">
+                  Continue as {names.client}: decide
+                  <Arrow />
+                </ButtonLink>
+              )
+            ) : m.status === "fix_window" ? (
+              <>
+                <ButtonLink href={`/m/${m.id}/submit`} className="group">
+                  Continue as {names.freelancer}: submit a fix
+                  <Arrow />
+                </ButtonLink>
+                <Button variant="ghost" size="sm" onClick={() => voidRemainder(m.id)}>
+                  Simulate: fix window ends
+                </Button>
+              </>
+            ) : m.status === "appealed" ? (
+              <ButtonLink href={`/m/${m.id}/decide`} variant="secondary">
                 View the appeal
               </ButtonLink>
-            </>
-          ) : (
-            <>
-              <Badge tone={m.status === "released" ? "good" : "neutral"}>{m.status === "released" ? "Paid in full" : "Closed"}</Badge>
-              <p className="mt-3 text-sm text-slate-600">
-                {m.status === "released" ? "Every criterion passed and the full amount was released." : "The unverified share went back to the client."}
-              </p>
-              <ButtonLink href="/dashboard" variant="secondary" className="mt-4 w-full">
+            ) : (
+              <ButtonLink href="/dashboard" variant="secondary" className="group">
                 See all milestones
+                <Arrow />
               </ButtonLink>
-            </>
-          )}
-        </Card>
-        <Card>
-          <h2 className="text-sm font-semibold">Signature</h2>
-          <dl className="mt-2 space-y-1.5 text-xs text-slate-600">
-            <div className="flex justify-between gap-2">
-              <dt>Spec hash</dt>
-              <dd className="font-mono">{shortHash(m.specHash)}</dd>
+            )}
+          </div>
+          {m.status === "awaiting_decision" ? (
+            <p className="mt-4 text-xs text-dim">
+              {agentDecides ? "If the agent hands it back and nobody replies, the verified share is released in " : "If nobody replies, the verified share is released in "}
+              <span className="font-mono text-mute">
+                <Countdown to={m.decisionDueAt} />
+              </span>
+            </p>
+          ) : m.status === "fix_window" ? (
+            <p className="mt-4 text-xs text-dim">
+              Fix window ends in{" "}
+              <span className="font-mono text-mute">
+                <Countdown to={m.fixDueAt} />
+              </span>
+              . Until then {money(totals.held)} stays a hold on {names.client}&apos;s PayPal.
+            </p>
+          ) : null}
+        </div>
+        <div className="min-w-0">
+          <MilestoneOrbit m={m} />
+        </div>
+      </Panel>
+
+      <section aria-label="Evidence per criterion" className="space-y-3">
+        <div className="flex items-baseline justify-between gap-3">
+          <h2 className="font-display text-xl font-semibold">Evidence</h2>
+          <span className="text-xs text-dim">{m.criteria.length} criteria · same view for both sides</span>
+        </div>
+        {failedCriteria.map((c) => {
+          const r = report.results.find((x) => x.criterionId === c.id)!;
+          return (
+            <article key={c.id} className="glass flex flex-wrap gap-5 rounded-3xl border-flare/25 p-5">
+              <EvidenceThumb criterion={c} result={r} />
+              <div className="min-w-0 flex-1 basis-64">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <VerdictChip verdict={r.verdict} />
+                  <span className="font-mono text-xs text-flare">{money((authorized * c.weight) / 100)} held</span>
+                </div>
+                <h3 className="mt-3 font-medium text-ink">{c.title}</h3>
+                <p className="mt-1 text-sm text-mute">{r.reason}</p>
+                <p className="mt-2 text-xs text-dim">Evidence: {r.evidence}</p>
+              </div>
+            </article>
+          );
+        })}
+        <div className="grid gap-3 sm:grid-cols-2">
+          {passedCriteria.map((c, i) => {
+            const r = report.results.find((x) => x.criterionId === c.id)!;
+            return (
+              <article key={c.id} onMouseMove={trackSpotlight} className="spotlight glass rise flex flex-col gap-4 rounded-3xl p-5" style={stagger(i)}>
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <VerdictChip verdict={r.verdict} />
+                    <h3 className="mt-3 font-medium text-ink">{c.title}</h3>
+                  </div>
+                  <ConfidenceRing value={r.confidence} />
+                </div>
+                <p className="text-sm text-mute">{r.reason}</p>
+                <div className="mt-auto flex flex-wrap items-center gap-2 text-xs text-dim">
+                  <Chip tone={c.check === "ai" ? "brand" : "neutral"}>{c.check === "ai" ? "AI rubric" : "Automatic test"}</Chip>
+                  {c.mustPass ? <Chip tone="warn">Must pass</Chip> : null}
+                  <span className="ml-auto font-mono text-mint">{money((authorized * c.weight) / 100)}</span>
+                </div>
+                <p className="border-t border-white/[0.06] pt-3 text-xs text-dim">{r.evidence}</p>
+              </article>
+            );
+          })}
+        </div>
+      </section>
+
+      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)]">
+        <Panel>
+          <Eyebrow>Activity</Eyebrow>
+          <ol className="relative mt-5 space-y-5 before:absolute before:inset-y-1 before:left-[3px] before:w-px before:bg-white/[0.08]">
+            {activityFor(m).map((a, i) => (
+              <li key={i} className="relative flex gap-4 pl-0 text-sm">
+                <span className={`relative mt-1.5 size-[7px] shrink-0 rounded-full ${actorDot[a.actor]} glow-dot`} />
+                <div className="min-w-0">
+                  <p className="text-ink">
+                    <span className="font-medium">{a.who}</span> <span className="text-mute">{a.text}</span>
+                  </p>
+                  <p className="mt-0.5 text-xs text-dim">
+                    <When at={a.at} />
+                  </p>
+                </div>
+              </li>
+            ))}
+          </ol>
+        </Panel>
+
+        <div className="min-w-0 space-y-6">
+          <Panel>
+            <Eyebrow>Signature</Eyebrow>
+            <dl className="mt-4 space-y-2.5 text-sm">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <dt className="text-dim">Spec hash</dt>
+                <dd className="flex items-center gap-1 font-mono text-xs text-ink">
+                  {shortHash(m.specHash)}
+                  <CopyButton value={m.specHash} />
+                </dd>
+              </div>
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <dt className="text-dim">Report hash</dt>
+                <dd className="flex items-center gap-1 font-mono text-xs text-ink">
+                  {shortHash(report.reportHash)}
+                  <CopyButton value={report.reportHash} />
+                </dd>
+              </div>
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <dt className="text-dim">Verified</dt>
+                <dd className="text-xs text-ink">
+                  <When at={report.verifiedAt} />
+                </dd>
+              </div>
+            </dl>
+            <p className="mt-4 text-xs leading-relaxed text-dim">If a dispute is opened, this report becomes the evidence file sent to PayPal.</p>
+          </Panel>
+
+          <section aria-label="PayPal calls" className="overflow-hidden rounded-3xl border border-white/[0.08] bg-void/80">
+            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-white/[0.06] px-5 py-3.5">
+              <span className="text-sm font-medium text-ink">PayPal calls</span>
+              <span className="font-mono text-[11px] text-dim">simulated · sandbox in Phase 1</span>
             </div>
-            <div className="flex justify-between gap-2">
-              <dt>Report hash</dt>
-              <dd className="font-mono">{shortHash(report.reportHash)}</dd>
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[520px] font-mono text-[11.5px]">
+                <tbody>
+                  {apiTrail(m, releasable).map((row, i) => (
+                    <tr key={i} className="border-b border-white/[0.04] last:border-0">
+                      <td className={`py-3 pl-5 pr-3 ${row.method === "HOOK" ? "text-nova" : "text-ice"}`}>{row.method}</td>
+                      <td className="py-3 pr-3 text-mute">{row.path}</td>
+                      <td className={`py-3 pr-5 text-right ${row.tone === "good" ? "text-mint" : "text-sun"}`}>{row.result}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
-            <div className="flex justify-between gap-2">
-              <dt>Verified</dt>
-              <dd>
-                <When at={report.verifiedAt} />
-              </dd>
-            </div>
-          </dl>
-          <p className="mt-3 text-xs text-slate-500">If a dispute is opened, this report becomes the evidence pack sent to PayPal.</p>
-        </Card>
-      </aside>
+          </section>
+        </div>
+      </div>
 
       {!m.walkthrough ? null : m.status === "awaiting_decision" ? (
-        <DemoGuide step="step 5 of 7" next={{ href: `/m/${m.id}/decide`, label: `Switch to ${names.client} and decide` }}>
+        <DemoGuide step={5} next={{ href: `/m/${m.id}/decide`, label: agentDecides ? `Watch ${names.client}'s agent decide` : `Switch to ${names.client} and decide` }}>
           Both sides see the same evidence. {passed} of {report.results.length} passed, so {money(releasable)} can be released
-          {waiting > 0 ? ` and ${money(waiting)} waits for a fix.` : "."}
+          {waiting > 0 ? ` and ${money(waiting)} waits for a fix.` : "."} {agentDecides ? `${names.client}'s agent decides next.` : ""}
         </DemoGuide>
       ) : m.status === "fix_window" ? (
-        <DemoGuide step="step 6 of 7" next={{ href: `/m/${m.id}/submit`, label: `Switch to ${names.freelancer} and fix` }}>
+        <DemoGuide step={6} next={{ href: `/m/${m.id}/submit`, label: `Switch to ${names.freelancer} and fix` }}>
           {money(totals.captured)} is released. The other {money(totals.held)} is still only a hold on {names.client}&apos;s PayPal while {names.freelancer} fixes it.
         </DemoGuide>
       ) : m.status === "released" ? (
-        <DemoGuide step="step 7 of 7" next={{ href: "/dashboard", label: "See all milestones" }}>
+        <DemoGuide step={7} next={{ href: "/dashboard", label: "See all milestones" }}>
           Paid as agreed: every criterion passed and the full amount was released, with a signed record of why.
         </DemoGuide>
       ) : null}

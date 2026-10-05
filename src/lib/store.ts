@@ -1,33 +1,39 @@
 "use client";
 
 import { useSyncExternalStore } from "react";
-import { ledgerTotals, releasableAmount } from "./decision";
+import { agentReview, ledgerTotals, releasableAmount } from "./decision";
 import { fakePayPalId, previewHash } from "./format";
-import { makeSeed } from "./seed";
-import type { Criterion, CriterionResult, Milestone, Submission } from "./types";
+import { defaultMandate, makeSeed } from "./seed";
+import type { AgentMandate, ApprovalMode, Criterion, CriterionResult, Milestone, Submission } from "./types";
 
 // Prototype-only store: dummy data kept in the browser (localStorage). Replaced by the real API in Phase 1.
 
-const KEY = "payplan-prototype-v1";
+type State = { milestones: Milestone[]; mandate: AgentMandate };
+
+const KEY = "payplan-prototype-v2";
 const HOUR = 3_600_000;
 const SERVER_NOW = Date.parse("2026-10-05T12:00:00Z");
-const serverState: Milestone[] = makeSeed(SERVER_NOW);
+const serverState: State = { milestones: makeSeed(SERVER_NOW), mandate: defaultMandate };
 
-let state: Milestone[] | null = null;
+let state: State | null = null;
 const listeners = new Set<() => void>();
 
-function load(): Milestone[] {
+function fresh(): State {
+  return { milestones: makeSeed(Date.now()), mandate: defaultMandate };
+}
+
+function load(): State {
   if (state) return state;
   try {
     const raw = window.localStorage.getItem(KEY);
-    state = raw ? (JSON.parse(raw) as Milestone[]) : makeSeed(Date.now());
+    state = raw ? (JSON.parse(raw) as State) : fresh();
   } catch {
-    state = makeSeed(Date.now());
+    state = fresh();
   }
   return state;
 }
 
-function save(next: Milestone[]) {
+function save(next: State) {
   state = next;
   try {
     window.localStorage.setItem(KEY, JSON.stringify(next));
@@ -43,15 +49,28 @@ function subscribe(listener: () => void) {
 }
 
 export function useMilestones(): Milestone[] {
-  return useSyncExternalStore(subscribe, load, () => serverState);
+  return useSyncExternalStore(
+    subscribe,
+    () => load().milestones,
+    () => serverState.milestones,
+  );
 }
 
 export function useMilestone(id: string): Milestone | undefined {
   return useMilestones().find((m) => m.id === id);
 }
 
+export function useMandate(): AgentMandate {
+  return useSyncExternalStore(
+    subscribe,
+    () => load().mandate,
+    () => serverState.mandate,
+  );
+}
+
 function update(id: string, change: (m: Milestone) => Milestone) {
-  save(load().map((m) => (m.id === id ? change(m) : m)));
+  const s = load();
+  save({ ...s, milestones: s.milestones.map((m) => (m.id === id ? change(m) : m)) });
 }
 
 const nowIso = () => new Date().toISOString();
@@ -66,8 +85,8 @@ export type NewMilestoneInput = {
 };
 
 export function createMilestone(input: NewMilestoneInput, walkthrough = false): string {
-  const all = load();
-  const next = Math.max(1050, ...all.map((m) => Number(m.id.replace("m-", "")) || 0)) + 1;
+  const s = load();
+  const next = Math.max(1050, ...s.milestones.map((m) => Number(m.id.replace("m-", "")) || 0)) + 1;
   const id = `m-${next}`;
   const criteria = input.criteria.map((c, i) => ({ ...c, id: `${id}-c${i + 1}` }));
   const milestone: Milestone = {
@@ -88,22 +107,29 @@ export function createMilestone(input: NewMilestoneInput, walkthrough = false): 
     createdAt: nowIso(),
     reports: [],
     ledger: [],
+    approval: "client",
     walkthrough,
   };
-  save([milestone, ...all]);
+  save({ ...s, milestones: [milestone, ...s.milestones] });
   return id;
 }
 
-export function fundMilestone(id: string) {
+export function fundMilestone(id: string, approval: ApprovalMode) {
   update(id, (m) => ({
     ...m,
     status: "funded",
+    approval,
     fundedAt: nowIso(),
     ledger: [
       ...m.ledger,
       { id: fakePayPalId("AUTH", id + nowIso()), kind: "authorization", amount: m.amount, at: nowIso(), note: "Client approved the hold in PayPal" },
     ],
   }));
+}
+
+/** Switching back to the agent before a release lets it review the report again. */
+export function setApproval(id: string, approval: ApprovalMode) {
+  update(id, (m) => ({ ...m, approval, agentDecision: approval === "agent" && m.status === "awaiting_decision" ? undefined : m.agentDecision }));
 }
 
 export function submitWork(id: string, submission: Omit<Submission, "submittedAt">) {
@@ -152,16 +178,29 @@ export function acceptRelease(id: string) {
   update(id, (m) => captureVerified(m, "Client accepted the acceptance report"));
 }
 
+/** The client's agent reviews the report against its mandate and either releases or hands the decision back. */
+export function agentDecide(id: string) {
+  const mandate = load().mandate;
+  update(id, (m) => {
+    const report = m.reports.at(-1);
+    if (!report || m.status !== "awaiting_decision") return m;
+    const review = agentReview(m.criteria, report.results, ledgerTotals(m.ledger).authorized || m.amount, mandate);
+    const decision = { at: nowIso(), outcome: review.approved ? ("released" as const) : ("handed_to_client" as const), amount: review.releasable, checks: review.checks };
+    if (!review.approved) return { ...m, approval: "client", agentDecision: decision };
+    return { ...captureVerified(m, `${mandate.name} released verified work within its limit`), agentDecision: decision };
+  });
+}
+
 export function autoRelease(id: string) {
   update(id, (m) => captureVerified(m, "Review window ended without a reply; verified share released"));
 }
 
 export function openAppeal(id: string, reason: string) {
-  update(id, (m) => ({ ...m, status: "appealed", appealReason: reason }));
+  update(id, (m) => ({ ...m, status: "appealed", appealReason: reason, appealedAt: nowIso() }));
 }
 
 export function withdrawAppeal(id: string) {
-  update(id, (m) => ({ ...m, status: "awaiting_decision", appealReason: undefined }));
+  update(id, (m) => ({ ...m, status: "awaiting_decision", appealReason: undefined, appealedAt: undefined }));
 }
 
 export function startFix(id: string) {
@@ -180,6 +219,11 @@ export function voidRemainder(id: string) {
   });
 }
 
+export function updateMandate(patch: Partial<AgentMandate>) {
+  const s = load();
+  save({ ...s, mandate: { ...s.mandate, ...patch } });
+}
+
 export function resetDemo() {
-  save(makeSeed(Date.now()));
+  save(fresh());
 }

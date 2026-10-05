@@ -25,5 +25,5 @@ export default function MilestoneIndex() {
   useEffect(() => {
     router.replace(m ? `/m/${id}/${pageFor[m.status]}` : "/dashboard");
   }, [id, m, router]);
-  return <p className="text-sm text-slate-500">Opening milestone…</p>;
+  return <p className="text-sm text-dim">Opening milestone…</p>;
 }

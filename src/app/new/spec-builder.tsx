@@ -3,10 +3,12 @@
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
 import { DemoGuide } from "@/components/demo-guide";
-import { Badge, Button, Card, Field, RoleChip, inputClass } from "@/components/ui";
+import { NumberTicker } from "@/components/motion";
+import { Arrow, Button, Chip, Eyebrow, Field, Panel, RoleChip, Toggle, inputClass } from "@/components/ui";
 import { genericCriterion, suggestCriteria } from "@/lib/criteria-presets";
 import { money } from "@/lib/format";
 import { createMilestone } from "@/lib/store";
+import { stagger } from "@/lib/style";
 import type { Criterion, EvidenceType } from "@/lib/types";
 
 type Draft = Omit<Criterion, "id"> & { key: number };
@@ -21,6 +23,8 @@ const evidenceLabels: Record<EvidenceType, string> = {
   github: "GitHub PR",
   text: "Text",
 };
+
+const segmentShades = ["bg-nova", "bg-nova/75", "bg-nova/55", "bg-ice/80", "bg-ice/55", "bg-mint/70", "bg-mint/45", "bg-sun/60"];
 
 let nextKey = 1;
 
@@ -53,10 +57,11 @@ export function SpecBuilder() {
 
   function suggest() {
     setSuggesting(true);
+    setCriteria([]);
     setTimeout(() => {
       setCriteria(suggestCriteria(brief).map((c) => ({ ...c, key: nextKey++ })));
       setSuggesting(false);
-    }, 900);
+    }, 1200);
   }
 
   function change(key: number, patch: Partial<Draft>) {
@@ -64,32 +69,36 @@ export function SpecBuilder() {
   }
 
   function create() {
-    const id = createMilestone({
-      title: title.trim(),
-      clientName: clientName.trim() || "Client",
-      clientEmail: clientEmail.trim(),
-      amount,
-      reviewWindowHours,
-      criteria: criteria.map(withoutKey),
-    }, demo);
+    const id = createMilestone(
+      {
+        title: title.trim(),
+        clientName: clientName.trim() || "Client",
+        clientEmail: clientEmail.trim(),
+        amount,
+        reviewWindowHours,
+        criteria: criteria.map(withoutKey),
+      },
+      demo,
+    );
     router.push(`/m/${id}/fund`);
   }
 
   return (
-    <div className="min-w-0 space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
+    <div className="min-w-0 space-y-8">
+      <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">New milestone</h1>
-          <p className="mt-1 text-slate-600">Agree on what &quot;done&quot; means before any money moves.</p>
+          <Eyebrow>Step 1 · Agree on done</Eyebrow>
+          <h1 className="mt-2 font-display text-4xl font-semibold tracking-tight font-stretch-semi-expanded">New milestone</h1>
+          <p className="mt-2 text-mute">Agree on what &quot;done&quot; means before any money moves.</p>
         </div>
-        <RoleChip role="freelancer" />
+        <RoleChip role="freelancer" name="Riya" />
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
+      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
         <div className="min-w-0 space-y-6">
-          <Card>
-            <h2 className="font-semibold">Basics</h2>
-            <div className="mt-4 grid gap-4 sm:grid-cols-2">
+          <Panel>
+            <h2 className="font-display text-lg font-semibold">Basics</h2>
+            <div className="mt-5 grid gap-5 sm:grid-cols-2">
               <div className="sm:col-span-2">
                 <Field label="Milestone title">
                   <input className={inputClass} value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Landing page for …" />
@@ -98,7 +107,7 @@ export function SpecBuilder() {
               <Field label="Client name">
                 <input className={inputClass} value={clientName} onChange={(e) => setClientName(e.target.value)} />
               </Field>
-              <Field label="Client email" hint="We send the PayPal funding link here.">
+              <Field label="Client email" hint="The PayPal funding link goes here.">
                 <input className={inputClass} type="email" value={clientEmail} onChange={(e) => setClientEmail(e.target.value)} />
               </Field>
               <Field label="Amount (USD)">
@@ -112,43 +121,70 @@ export function SpecBuilder() {
                 </select>
               </Field>
             </div>
-          </Card>
+          </Panel>
 
-          <Card>
+          <Panel className={suggesting ? "beam" : ""}>
             <div className="flex flex-wrap items-center justify-between gap-2">
-              <h2 className="font-semibold">Brief</h2>
-              <Badge tone="brand">AI helper</Badge>
+              <h2 className="font-display text-lg font-semibold">Brief</h2>
+              <Chip tone="brand" dot>
+                AI helper
+              </Chip>
             </div>
-            <p className="mt-1 text-sm text-slate-600">Paste the client&apos;s brief. The AI suggests criteria; you edit and approve them.</p>
-            <textarea className={`${inputClass} mt-3 min-h-28`} value={brief} onChange={(e) => setBrief(e.target.value)} placeholder="Paste the brief or message from the client…" />
-            <Button className="mt-3" variant="secondary" onClick={suggest} disabled={suggesting || !brief.trim()}>
-              {suggesting ? "Reading the brief…" : "Suggest criteria"}
+            <p className="mt-1 text-sm text-mute">Paste the client&apos;s brief. The AI drafts criteria; you edit and approve them.</p>
+            <textarea className={`${inputClass} mt-4 min-h-28 leading-relaxed`} value={brief} onChange={(e) => setBrief(e.target.value)} placeholder="Paste the brief or message from the client…" />
+            <Button className="mt-4" variant="agent" onClick={suggest} disabled={suggesting || !brief.trim()}>
+              {suggesting ? (
+                <>
+                  <span className="size-3.5 animate-spin rounded-full border-2 border-void/25 border-t-void" aria-hidden />
+                  Reading the brief…
+                </>
+              ) : (
+                <>
+                  <svg viewBox="0 0 16 16" className="size-4" aria-hidden>
+                    <path d="M8 1.5l1.6 4.2 4.4 1.3-4.4 1.3L8 12.5 6.4 8.3 2 7l4.4-1.3z" fill="currentColor" />
+                  </svg>
+                  Draft criteria with AI
+                </>
+              )}
             </Button>
-          </Card>
+          </Panel>
 
-          <Card>
+          <Panel>
             <div className="flex flex-wrap items-center justify-between gap-2">
-              <h2 className="font-semibold">Acceptance criteria</h2>
-              <span className={`text-sm font-semibold tabular-nums ${totalWeight === 100 ? "text-emerald-700" : "text-amber-700"}`}>Weights: {totalWeight}% of 100%</span>
+              <h2 className="font-display text-lg font-semibold">Acceptance criteria</h2>
+              <span className={`font-mono text-xs tabular-nums ${totalWeight === 100 ? "text-mint" : "text-sun"}`}>Weights: {totalWeight}% of 100%</span>
             </div>
-            <p className="mt-1 text-sm text-slate-600">
-              Each passed criterion releases its weight. A <strong>must-pass</strong> criterion that fails releases nothing until it is fixed.
+            <p className="mt-1 text-sm text-mute">
+              Each passed criterion releases its weight. A <span className="text-ink">must-pass</span> criterion that fails releases nothing until it is fixed.
             </p>
 
-            {criteria.length === 0 ? (
-              <p className="mt-6 rounded-xl border border-dashed border-slate-300 p-6 text-center text-sm text-slate-500">No criteria yet. Use the AI helper above or add one yourself.</p>
+            <div className="mt-5 flex h-2 w-full gap-1 overflow-hidden rounded-full bg-white/[0.04]" aria-hidden>
+              {criteria.map((c, i) => (
+                <span key={c.key} className={`h-full rounded-full transition-[flex-grow] duration-700 ease-out-expo ${segmentShades[i % segmentShades.length]}`} style={{ flexGrow: Math.max(0, c.weight), flexBasis: 0 }} title={c.title} />
+              ))}
+              {totalWeight < 100 ? <span className="h-full" style={{ flexGrow: 100 - totalWeight, flexBasis: 0 }} /> : null}
+            </div>
+
+            {suggesting ? (
+              <ul className="mt-5 space-y-3" aria-label="Drafting criteria">
+                {[0, 1, 2].map((i) => (
+                  <li key={i} className="shimmer h-20 rounded-2xl" />
+                ))}
+              </ul>
+            ) : criteria.length === 0 ? (
+              <p className="mt-5 rounded-2xl border border-dashed border-white/10 p-8 text-center text-sm text-dim">No criteria yet. Let the AI draft them from the brief, or add one yourself.</p>
             ) : (
               <ul className="mt-5 space-y-3">
                 {criteria.map((c, i) => (
-                  <li key={c.key} className="rounded-xl border border-slate-200 p-4">
+                  <li key={c.key} className="rise rounded-2xl border border-white/[0.07] bg-white/[0.02] p-4" style={stagger(i)}>
                     <div className="flex items-start gap-3">
-                      <span className="mt-2 text-sm font-semibold text-slate-400">{i + 1}</span>
-                      <div className="flex-1 space-y-3">
+                      <span className={`mt-2.5 size-2 shrink-0 rounded-full ${segmentShades[i % segmentShades.length]}`} />
+                      <div className="min-w-0 flex-1 space-y-3">
                         <input className={inputClass} aria-label={`Criterion ${i + 1} title`} value={c.title} onChange={(e) => change(c.key, { title: e.target.value })} placeholder="What must be true?" />
-                        <div className="flex flex-wrap items-center gap-3 text-sm">
+                        <div className="flex flex-wrap items-center gap-x-4 gap-y-3 text-[13px]">
                           <label className="flex items-center gap-2">
-                            <span className="whitespace-nowrap text-slate-500">Evidence</span>
-                            <select className={`${inputClass} w-auto`} value={c.evidence} onChange={(e) => change(c.key, { evidence: e.target.value as EvidenceType })}>
+                            <span className="whitespace-nowrap text-dim">Evidence</span>
+                            <select className={`${inputClass} w-auto py-1.5`} value={c.evidence} onChange={(e) => change(c.key, { evidence: e.target.value as EvidenceType })}>
                               {Object.entries(evidenceLabels).map(([value, label]) => (
                                 <option key={value} value={value}>
                                   {label}
@@ -157,85 +193,86 @@ export function SpecBuilder() {
                             </select>
                           </label>
                           <label className="flex items-center gap-2">
-                            <span className="whitespace-nowrap text-slate-500">Checked by</span>
-                            <select className={`${inputClass} w-auto`} value={c.check} onChange={(e) => change(c.key, { check: e.target.value as Draft["check"] })}>
+                            <span className="whitespace-nowrap text-dim">Checked by</span>
+                            <select className={`${inputClass} w-auto py-1.5`} value={c.check} onChange={(e) => change(c.key, { check: e.target.value as Draft["check"] })}>
                               <option value="automatic">Automatic test</option>
                               <option value="ai">AI rubric</option>
                             </select>
                           </label>
                           <label className="flex items-center gap-2">
-                            <span className="whitespace-nowrap text-slate-500">Weight</span>
-                            <input
-                              className={`${inputClass} w-20`}
-                              type="number"
-                              min={0}
-                              max={100}
-                              value={c.weight}
-                              onChange={(e) => change(c.key, { weight: Number(e.target.value) })}
-                            />
-                            <span className="text-slate-500">%</span>
+                            <span className="whitespace-nowrap text-dim">Weight</span>
+                            <input className={`${inputClass} w-20 py-1.5`} type="number" min={0} max={100} value={c.weight} onChange={(e) => change(c.key, { weight: Number(e.target.value) })} />
+                            <span className="text-dim">%</span>
                           </label>
-                          <label className="flex items-center gap-2">
-                            <input type="checkbox" className="size-4 accent-teal-700" checked={c.mustPass} onChange={(e) => change(c.key, { mustPass: e.target.checked })} />
-                            <span>Must pass</span>
-                          </label>
+                          <span className="flex items-center gap-2">
+                            <Toggle checked={c.mustPass} onChange={(v) => change(c.key, { mustPass: v })} label={`Criterion ${i + 1} must pass`} tone="mint" />
+                            <span className="text-mute">Must pass</span>
+                          </span>
                         </div>
                       </div>
-                      <button onClick={() => setCriteria((list) => list.filter((x) => x.key !== c.key))} className="text-sm text-slate-400 hover:text-rose-600" aria-label={`Remove criterion ${i + 1}`}>
-                        Remove
+                      <button
+                        type="button"
+                        onClick={() => setCriteria((list) => list.filter((x) => x.key !== c.key))}
+                        className="rounded-lg p-2 text-dim transition hover:bg-flare/10 hover:text-flare"
+                        aria-label={`Remove criterion ${i + 1}`}
+                      >
+                        <svg viewBox="0 0 16 16" className="size-4" aria-hidden>
+                          <path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+                        </svg>
                       </button>
                     </div>
                   </li>
                 ))}
               </ul>
             )}
-            <Button className="mt-4" variant="ghost" onClick={() => setCriteria((list) => [...list, { ...genericCriterion(""), key: nextKey++ }])}>
+            <Button className="mt-4" variant="ghost" size="sm" onClick={() => setCriteria((list) => [...list, { ...genericCriterion(""), key: nextKey++ }])}>
               + Add criterion
             </Button>
-          </Card>
+          </Panel>
         </div>
 
-        <aside className="min-w-0 space-y-4 lg:sticky lg:top-24 lg:self-start">
-          <Card>
-            <h2 className="font-semibold">Summary</h2>
-            <dl className="mt-3 space-y-2 text-sm">
-              <div className="flex justify-between gap-3">
-                <dt className="text-slate-500">Amount</dt>
-                <dd className="font-semibold tabular-nums">{money(amount || 0)}</dd>
-              </div>
-              <div className="flex justify-between gap-3">
-                <dt className="text-slate-500">Criteria</dt>
-                <dd className="font-semibold">{criteria.length}</dd>
-              </div>
-              <div className="flex justify-between gap-3">
-                <dt className="text-slate-500">Must-pass gates</dt>
-                <dd className="font-semibold">{criteria.filter((c) => c.mustPass).length}</dd>
-              </div>
-              <div className="flex justify-between gap-3">
-                <dt className="text-slate-500">Fix window</dt>
-                <dd className="font-semibold">72 hours</dd>
-              </div>
+        <aside className="min-w-0 lg:sticky lg:top-8 lg:self-start">
+          <Panel>
+            <Eyebrow>Summary</Eyebrow>
+            <p className="mt-3 font-display text-4xl font-semibold tracking-tight text-ink font-stretch-semi-expanded">
+              <NumberTicker value={amount || 0} duration={500} />
+            </p>
+            <dl className="mt-5 space-y-2.5 text-sm">
+              {[
+                ["Criteria", String(criteria.length)],
+                ["Must-pass gates", String(criteria.filter((c) => c.mustPass).length)],
+                ["Review window", `${reviewWindowHours} hours`],
+                ["Fix window", "72 hours"],
+              ].map(([k, v]) => (
+                <div key={k} className="flex justify-between gap-3">
+                  <dt className="text-dim">{k}</dt>
+                  <dd className="font-medium text-ink">{v}</dd>
+                </div>
+              ))}
             </dl>
             {problems.length > 0 ? (
-              <ul className="mt-4 space-y-1 rounded-xl bg-amber-50 p-3 text-xs text-amber-900">
+              <ul className="mt-5 space-y-1.5 rounded-2xl border border-sun/20 bg-sun/[0.06] p-3.5 text-xs text-sun">
                 {problems.map((p) => (
                   <li key={p}>{p}</li>
                 ))}
               </ul>
             ) : !hasGate ? (
-              <p className="mt-4 rounded-xl bg-sky-50 p-3 text-xs text-sky-900">Tip: mark at least one criterion as must-pass, such as &quot;page is live&quot;.</p>
-            ) : null}
-            <Button className="mt-4 w-full" size="lg" onClick={create} disabled={problems.length > 0}>
+              <p className="mt-5 rounded-2xl border border-ice/20 bg-ice/[0.06] p-3.5 text-xs text-ice">Tip: mark at least one criterion as must-pass, such as &quot;page is live&quot;.</p>
+            ) : (
+              <p className="mt-5 rounded-2xl border border-mint/20 bg-mint/[0.06] p-3.5 text-xs text-mint">Ready. {money(amount)} splits across {criteria.length} criteria.</p>
+            )}
+            <Button className="group mt-5 w-full" size="lg" onClick={create} disabled={problems.length > 0}>
               Create and get funding link
+              <Arrow />
             </Button>
-            <p className="mt-2 text-xs text-slate-500">The spec is frozen and hashed once the client funds it. Changes after that need a new milestone.</p>
-          </Card>
+            <p className="mt-3 text-xs leading-relaxed text-dim">The spec is frozen and hashed once the client funds it. Changes after that need a new milestone.</p>
+          </Panel>
         </aside>
       </div>
 
       {demo ? (
-        <DemoGuide step="step 1 of 7">
-          You are <strong>Riya, the freelancer</strong>. Click <strong>Suggest criteria</strong>, check the weights add up to 100%, then press <strong>Create and get funding link</strong>.
+        <DemoGuide step={1}>
+          You are <strong>Riya, the freelancer</strong>. Press <strong>Draft criteria with AI</strong>, check the weights add up to 100%, then press <strong>Create and get funding link</strong>.
         </DemoGuide>
       ) : null}
     </div>

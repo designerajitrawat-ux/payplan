@@ -1,4 +1,5 @@
-import type { Criterion, CriterionResult, LedgerEntry } from "./types";
+import { money } from "./format";
+import type { AgentCheck, AgentMandate, Criterion, CriterionResult, LedgerEntry } from "./types";
 
 /**
  * Rules engine: turns per-criterion verdicts into an amount.
@@ -22,4 +23,27 @@ export function ledgerTotals(ledger: LedgerEntry[]) {
   const voided = ledger.filter((e) => e.kind === "void").reduce((s, e) => s + e.amount, 0);
   const held = Math.max(0, Math.round((authorized - captured - voided) * 100) / 100);
   return { authorized, captured, voided, held };
+}
+
+const percent = (v: number) => `${Math.round(v * 100)}%`;
+
+/**
+ * The client's agent decides only inside its mandate. Every check must hold, otherwise the
+ * decision goes back to the client. The agent never appeals and never moves more than was verified.
+ */
+export function agentReview(criteria: Criterion[], results: CriterionResult[], authorized: number, mandate: AgentMandate) {
+  const releasable = releasableAmount(criteria, results, authorized);
+  const byId = new Map(results.map((r) => [r.criterionId, r]));
+  const gatesPassed = criteria.filter((c) => c.mustPass).every((c) => byId.get(c.id)?.verdict === "pass");
+  const passed = results.filter((r) => r.verdict === "pass");
+  const lowest = passed.length ? Math.min(...passed.map((r) => r.confidence)) : 0;
+  const needsPerson = results.some((r) => r.verdict === "review");
+  const checks: AgentCheck[] = [
+    { label: "Release permission", detail: mandate.releaseVerified ? "Allowed to release verified work" : "Releasing is switched off", ok: mandate.releaseVerified },
+    { label: "Within spending limit", detail: `${money(releasable)} of ${money(mandate.perMilestoneLimit)} allowed`, ok: releasable <= mandate.perMilestoneLimit },
+    { label: "Must-pass criteria", detail: gatesPassed ? "Every must-pass criterion passed" : "A must-pass criterion failed", ok: gatesPassed },
+    { label: "AI confidence", detail: `Lowest ${percent(lowest)}, needs ${percent(mandate.minConfidence)}`, ok: lowest >= mandate.minConfidence },
+    { label: "Nothing flagged for a person", detail: needsPerson ? "A result needs human review" : "No result needs human review", ok: !needsPerson },
+  ];
+  return { releasable, checks, approved: releasable > 0 && checks.every((c) => c.ok) };
 }

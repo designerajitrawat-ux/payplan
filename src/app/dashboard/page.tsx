@@ -1,31 +1,31 @@
 "use client";
 
 import Link from "next/link";
+import { OrbitRing } from "@/components/cosmos";
 import { DemoGuide } from "@/components/demo-guide";
-import { Countdown } from "@/components/time";
-import { Badge, ButtonLink, Card, StatusBadge } from "@/components/ui";
+import { NumberTicker, trackSpotlight } from "@/components/motion";
+import { Countdown, When } from "@/components/time";
+import { Arrow, Avatar, ButtonLink, Chip, Eyebrow, Panel, StatusChip } from "@/components/ui";
+import { activityFor, type Actor } from "@/lib/activity";
 import { ledgerTotals } from "@/lib/decision";
 import { money } from "@/lib/format";
 import { useMilestones } from "@/lib/store";
+import { stagger } from "@/lib/style";
 import type { Milestone } from "@/lib/types";
 
 function nextDeadline(m: Milestone): { label: string; at?: string } | null {
   if (m.status === "awaiting_decision") return { label: "Auto-release in", at: m.decisionDueAt };
-  if (m.status === "fix_window") return { label: "Fix window ends in", at: m.fixDueAt };
+  if (m.status === "fix_window") return { label: "Fix due in", at: m.fixDueAt };
   return null;
 }
 
-function MiniBar({ m }: { m: Milestone }) {
-  const t = ledgerTotals(m.ledger);
-  const total = t.authorized || m.amount;
-  return (
-    <div className="flex h-2 w-28 overflow-hidden rounded-full bg-slate-100" aria-hidden>
-      <div className="bg-emerald-500" style={{ width: `${(t.captured / total) * 100}%` }} />
-      <div className="bg-amber-400" style={{ width: `${(t.held / total) * 100}%` }} />
-      <div className="bg-slate-300" style={{ width: `${(t.voided / total) * 100}%` }} />
-    </div>
-  );
-}
+const actorDot: Record<Actor, string> = {
+  freelancer: "bg-sun",
+  client: "bg-ice",
+  agent: "bg-nova",
+  verifier: "bg-nova",
+  paypal: "bg-mint",
+};
 
 export default function Dashboard() {
   const milestones = useMilestones();
@@ -33,87 +33,139 @@ export default function Dashboard() {
   const held = totals.reduce((s, t) => s + t.held, 0);
   const released = totals.reduce((s, t) => s + t.captured, 0);
   const waitingOnYou = milestones.filter((m) => m.status === "funded" || m.status === "fix_window").length;
-  const agentBought = milestones.filter((m) => m.boughtByAgent).length;
-
-  const tiles = [
-    { label: "Held on clients' PayPal", value: money(held) },
-    { label: "Released to you", value: money(released) },
-    { label: "Waiting on you", value: String(waitingOnYou) },
-    { label: "Bought by AI agents", value: String(agentBought) },
-  ];
+  const agentReleases = milestones.filter((m) => m.agentDecision?.outcome === "released");
+  const agentPaid = agentReleases.reduce((s, m) => s + (m.agentDecision?.amount ?? 0), 0);
+  const activity = milestones
+    .flatMap((m) => activityFor(m).map((a) => ({ ...a, milestone: m })))
+    .sort((a, b) => Date.parse(b.at) - Date.parse(a.at))
+    .slice(0, 7);
 
   return (
-    <div className="min-w-0 space-y-6">
-      <div className="flex flex-wrap items-end justify-between gap-3">
+    <div className="min-w-0 space-y-8">
+      <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Milestones</h1>
-          <p className="mt-1 text-slate-600">Riya Sharma · freelance product designer, Pune</p>
+          <Eyebrow>Riya Sharma · product designer, Pune</Eyebrow>
+          <h1 className="mt-2 font-display text-4xl font-semibold tracking-tight font-stretch-semi-expanded">Milestones</h1>
         </div>
-        <ButtonLink href="/new">New milestone</ButtonLink>
+        <ButtonLink href="/new" className="group">
+          New milestone
+          <Arrow />
+        </ButtonLink>
       </div>
 
       <dl className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {tiles.map((t) => (
-          <Card key={t.label} className="p-5">
-            <dt className="text-sm text-slate-500">{t.label}</dt>
-            <dd className="mt-1 text-2xl font-bold tabular-nums">{t.value}</dd>
-          </Card>
-        ))}
+        <div onMouseMove={trackSpotlight} className="spotlight glass rise relative overflow-hidden rounded-3xl p-6 sm:col-span-2" style={stagger(0)}>
+          <dt className="flex items-center gap-2 text-sm text-mute">
+            <span className="size-2 rounded-full bg-mint glow-dot" />
+            Released to you
+          </dt>
+          <dd className="mt-3 font-display text-5xl font-semibold tracking-tight text-ink font-stretch-semi-expanded">
+            <NumberTicker value={released} from={0} duration={1400} />
+          </dd>
+          <dd className="mt-2 text-sm text-dim">Captured on PayPal after the AI verified the work</dd>
+          <span aria-hidden className="absolute -bottom-24 -right-16 size-64 rounded-full border border-mint/10" />
+          <span aria-hidden className="absolute -bottom-12 -right-4 size-40 rounded-full border border-mint/15" />
+        </div>
+        <div className="glass rise rounded-3xl p-6" style={stagger(1)}>
+          <dt className="flex items-center gap-2 text-sm text-mute">
+            <span className="size-2 rounded-full bg-ice glow-dot" />
+            Held on clients&apos; PayPal
+          </dt>
+          <dd className="mt-3 font-display text-3xl font-semibold text-ink">
+            <NumberTicker value={held} from={0} duration={1200} />
+          </dd>
+          <dd className="mt-2 text-xs text-dim">
+            Locked, not charged · {waitingOnYou} waiting on you
+          </dd>
+        </div>
+        <div className="glass rise rounded-3xl p-6" style={stagger(2)}>
+          <dt className="flex items-center gap-2 text-sm text-mute">
+            <span className="size-2 rounded-full bg-nova glow-dot" />
+            Paid by AI agents
+          </dt>
+          <dd className="mt-3 font-display text-3xl font-semibold text-ink">
+            <NumberTicker value={agentPaid} from={0} duration={1200} />
+          </dd>
+          <dd className="mt-2 text-xs text-dim">
+            {agentReleases.length} release{agentReleases.length === 1 ? "" : "s"} decided by an agent
+          </dd>
+        </div>
       </dl>
 
-      <Card className="p-0">
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[720px] text-left text-sm">
-            <thead className="border-b border-slate-200 text-xs uppercase tracking-wide text-slate-500">
-              <tr>
-                <th className="px-5 py-3">Milestone</th>
-                <th className="px-5 py-3">Amount</th>
-                <th className="px-5 py-3">Money</th>
-                <th className="px-5 py-3">Status</th>
-                <th className="px-5 py-3">Next deadline</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {milestones.map((m) => {
-                const d = nextDeadline(m);
-                return (
-                  <tr key={m.id} className="hover:bg-slate-50">
-                    <td className="px-5 py-4">
-                      <Link href={`/m/${m.id}`} className="font-semibold text-slate-900 hover:text-teal-700">
-                        {m.title}
-                      </Link>
-                      <p className="mt-0.5 flex flex-wrap items-center gap-2 text-xs text-slate-500">
-                        {m.clientName}
-                        {m.boughtByAgent ? <Badge tone="info">AI agent</Badge> : null}
-                      </p>
-                    </td>
-                    <td className="px-5 py-4 font-semibold tabular-nums">{money(m.amount)}</td>
-                    <td className="px-5 py-4">
-                      <MiniBar m={m} />
-                    </td>
-                    <td className="px-5 py-4">
-                      <StatusBadge status={m.status} />
-                    </td>
-                    <td className="px-5 py-4 text-slate-600">
-                      {d ? (
-                        <span>
-                          {d.label} <Countdown to={d.at} />
-                        </span>
-                      ) : (
-                        "None"
-                      )}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-      </Card>
-      <p className="text-xs text-slate-500">This table becomes the AG Studio acceptance cockpit in Phase 3.</p>
+      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
+        <section aria-label="All milestones" className="min-w-0 space-y-3">
+          {milestones.map((m, i) => {
+            const t = ledgerTotals(m.ledger);
+            const d = nextDeadline(m);
+            return (
+              <Link
+                key={m.id}
+                href={`/m/${m.id}`}
+                onMouseMove={trackSpotlight}
+                className="spotlight glass rise group flex flex-wrap items-center gap-x-5 gap-y-3 rounded-3xl p-5 transition hover:border-white/15"
+                style={stagger(i + 3)}
+              >
+                <div className="relative shrink-0">
+                  <OrbitRing captured={t.captured} held={t.held || (t.authorized ? 0 : m.amount)} voided={t.voided} />
+                </div>
+                <div className="min-w-0 flex-1 basis-48">
+                  <p className="truncate font-medium text-ink">{m.title}</p>
+                  <p className="mt-1 flex flex-wrap items-center gap-2 text-[13px] text-dim">
+                    {m.clientName}
+                    {m.boughtByAgent || m.approval === "agent" ? (
+                      <Chip tone="brand">{m.boughtByAgent ? "Bought by an agent" : "Agent approves"}</Chip>
+                    ) : null}
+                  </p>
+                </div>
+                <div className="flex shrink-0 flex-wrap items-center gap-x-5 gap-y-2">
+                  <div className="text-right">
+                    <p className="font-sans text-lg font-semibold text-ink font-stretch-semi-expanded">{money(m.amount)}</p>
+                    <p className="text-xs text-dim">{t.captured ? `${money(t.captured)} released` : t.authorized ? "On hold" : "Not funded"}</p>
+                  </div>
+                  <div className="flex w-44 flex-col items-start gap-1">
+                    <StatusChip status={m.status} />
+                    {d ? (
+                      <span className="pl-1 text-xs text-dim">
+                        {d.label} <Countdown to={d.at} />
+                      </span>
+                    ) : null}
+                  </div>
+                  <Arrow className="size-4 text-dim" />
+                </div>
+              </Link>
+            );
+          })}
+        </section>
+
+        <Panel as="aside" className="min-w-0 self-start p-5">
+          <Eyebrow>Activity</Eyebrow>
+          <ol className="mt-4 space-y-4">
+            {activity.map((a, i) => (
+              <li key={`${a.milestone.id}-${i}`} className="flex gap-3 text-[13px]">
+                <span className={`mt-1.5 size-1.5 shrink-0 rounded-full ${actorDot[a.actor]} glow-dot`} />
+                <div className="min-w-0">
+                  <p className="text-ink">
+                    <span className="font-medium">{a.who}</span> <span className="text-mute">{a.text}</span>
+                  </p>
+                  <p className="mt-0.5 flex gap-1 text-xs text-dim">
+                    <span className="truncate">{a.milestone.title}</span>
+                    <span className="shrink-0">
+                      · <When at={a.at} />
+                    </span>
+                  </p>
+                </div>
+              </li>
+            ))}
+          </ol>
+          <div className="mt-5 flex items-center gap-2 border-t border-white/[0.06] pt-4 text-xs text-dim">
+            <Avatar name="Riya Sharma" kind="freelancer" size="sm" />
+            Signed in as Riya · freelancer
+          </div>
+        </Panel>
+      </div>
 
       <DemoGuide step="tour" next={{ href: "/new?demo=1", label: "Start the walkthrough" }}>
-        These are dummy milestones. One was bought by Sam&apos;s AI agent and has a fix window open. Start the walkthrough to create your own.
+        These are example milestones. One was bought by Sam&apos;s AI agent, which released the verified 80% on its own. Start the walkthrough to create your own.
       </DemoGuide>
     </div>
   );

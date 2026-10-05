@@ -1,18 +1,10 @@
-@import "tailwindcss";
+@import "../src/app/globals.css";
 @source "../src";
 @source "./";
 
-@theme inline {
-  --font-sans: "Geist", ui-sans-serif, system-ui, sans-serif;
-  --font-mono: "Geist Mono", ui-monospace, monospace;
-}
-
+/* next/font sets these in the Next.js app; the static preview loads the same faces from Google Fonts. */
 :root {
-  color-scheme: light;
-}
-
-html,
-body {
-  background: var(--color-slate-50);
-  font-family: var(--font-sans);
+  --font-body: "Mona Sans";
+  --font-headline: "Hubot Sans";
+  --font-code: "Martian Mono";
 }

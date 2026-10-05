@@ -34,7 +34,7 @@ const js = readFileSync(`${out}/app.js`, "utf8").replace(/<\/script/gi, "<\\/scr
 const css = readFileSync(`${out}/app.css`, "utf8").replace(/<\/style/gi, "<\\/style");
 
 const fonts =
-  "https://fonts.googleapis.com/css2?family=Geist:wght@400..700&family=Geist+Mono:wght@400..600&display=swap";
+  "https://fonts.googleapis.com/css2?family=Hubot+Sans:wdth,wght@75..125,400..800&family=Mona+Sans:wdth,wght@75..125,400..700&family=Martian+Mono:wdth,wght@75..112.5,400..600&display=swap";
 
 const body = `<title>PayPlan prototype</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">

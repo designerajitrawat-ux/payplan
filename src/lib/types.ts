@@ -58,6 +58,28 @@ export type Submission = {
   submittedAt: string;
 };
 
+/** Who approves releases after the report: the client, or the client's AI agent within its limits. */
+export type ApprovalMode = "client" | "agent";
+
+/** What the client's AI agent is allowed to do. The PayPal authorization stays the hard ceiling. */
+export type AgentMandate = {
+  name: string;
+  owner: string;
+  perMilestoneLimit: number;
+  minConfidence: number;
+  releaseVerified: boolean;
+  fundMilestones: boolean;
+};
+
+export type AgentCheck = { label: string; detail: string; ok: boolean };
+
+export type AgentDecision = {
+  at: string;
+  outcome: "released" | "handed_to_client";
+  amount: number;
+  checks: AgentCheck[];
+};
+
 export type Milestone = {
   id: string;
   title: string;
@@ -81,6 +103,9 @@ export type Milestone = {
   reports: Report[];
   ledger: LedgerEntry[];
   appealReason?: string;
+  appealedAt?: string;
+  approval: ApprovalMode;
+  agentDecision?: AgentDecision;
   /** Created through the guided walkthrough, so the walkthrough card is shown on its pages. */
   walkthrough?: boolean;
 };

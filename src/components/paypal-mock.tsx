@@ -1,56 +1,101 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { money } from "@/lib/format";
+
+type Phase = "idle" | "busy" | "done";
 
 /**
  * Neutral stand-in for PayPal's checkout in the prototype. It deliberately does not copy PayPal's
  * look. In Phase 1 it is replaced by the official PayPal JS SDK button and a real sandbox AUTHORIZE order.
  */
-export function PayPalMockButton({ amount, payerEmail, onApprove }: { amount: number; payerEmail: string; onApprove: () => void }) {
+export function PayPalMockButton({ amount, payerEmail, agentNote, onApprove }: { amount: number; payerEmail: string; agentNote?: string; onApprove: () => void }) {
   const [open, setOpen] = useState(false);
-  const [busy, setBusy] = useState(false);
+  const [phase, setPhase] = useState<Phase>("idle");
+
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && phase === "idle") setOpen(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [open, phase]);
 
   function approve() {
-    setBusy(true);
+    setPhase("busy");
+    setTimeout(() => setPhase("done"), 900);
     setTimeout(() => {
-      setBusy(false);
       setOpen(false);
+      setPhase("idle");
       onApprove();
-    }, 900);
+    }, 1500);
   }
 
   return (
     <>
       <button
+        type="button"
         onClick={() => setOpen(true)}
-        className="flex w-full items-center justify-center gap-2 rounded-xl bg-slate-900 px-5 py-3 font-semibold text-white hover:bg-slate-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-600"
+        className="sheen group flex h-13 w-full items-center justify-center gap-2 rounded-full bg-sun px-5 font-semibold text-void shadow-[0_0_0_1px_rgba(255,181,71,0.5),0_12px_34px_-10px_rgba(255,181,71,0.7)] transition active:scale-[0.98] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-nova"
       >
+        <svg viewBox="0 0 20 20" className="size-4" aria-hidden>
+          <rect x="4" y="9" width="12" height="8" rx="2" fill="none" stroke="currentColor" strokeWidth="1.8" />
+          <path d="M7 9V6.5a3 3 0 016 0V9" fill="none" stroke="currentColor" strokeWidth="1.8" />
+        </svg>
         Approve hold with PayPal
-        <span className="rounded-md bg-white/15 px-1.5 py-0.5 text-[11px] font-semibold">simulated</span>
+        <span className="rounded-full bg-void/15 px-2 py-0.5 text-[11px] font-semibold">simulated</span>
       </button>
       {open ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4" role="dialog" aria-modal="true" aria-labelledby="pp-title">
-          <div className="w-full max-w-sm overflow-hidden rounded-2xl bg-white shadow-2xl">
-            <div className="flex items-center justify-between border-b border-slate-200 px-5 py-3">
-              <p id="pp-title" className="font-semibold text-slate-900">
-                Payment approval <span className="ml-1 rounded-md bg-amber-50 px-1.5 py-0.5 text-[11px] font-semibold text-amber-800 ring-1 ring-inset ring-amber-200">simulated</span>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-void/70 p-4 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="pp-title">
+          <div className="toast-in glass w-full max-w-sm overflow-hidden rounded-3xl">
+            <div className="flex items-center justify-between border-b border-white/[0.08] px-5 py-4">
+              <p id="pp-title" className="flex items-center gap-2 font-semibold text-ink">
+                Payment approval
+                <span className="rounded-full bg-sun/10 px-2 py-0.5 text-[11px] font-semibold text-sun ring-1 ring-inset ring-sun/25">simulated</span>
               </p>
-              <button onClick={() => setOpen(false)} className="text-sm text-slate-400 hover:text-slate-700" aria-label="Close">
-                ✕
+              <button type="button" onClick={() => setOpen(false)} disabled={phase !== "idle"} className="rounded-md p-1.5 text-dim transition hover:bg-white/5 hover:text-ink" aria-label="Close">
+                <svg viewBox="0 0 16 16" className="size-4" aria-hidden>
+                  <path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+                </svg>
               </button>
             </div>
             <div className="space-y-4 p-5 text-sm">
-              <p className="text-slate-600">In the real app, PayPal&apos;s own checkout opens here and {payerEmail || "the client"} logs in.</p>
-              <div className="rounded-xl bg-slate-50 p-4">
-                <p className="text-slate-500">Authorization hold</p>
-                <p className="text-2xl font-bold tabular-nums">{money(amount)}</p>
-                <p className="mt-1 text-xs text-slate-500">Nothing is charged now. Only criteria that pass are captured later.</p>
+              <p className="text-mute">In the real app, PayPal&apos;s own checkout opens here and {payerEmail || "the client"} logs in.</p>
+              <div className="rounded-2xl border border-ice/20 bg-ice/[0.06] p-4">
+                <p className="font-mono text-[11px] uppercase tracking-[0.16em] text-ice">Authorization hold</p>
+                <p className="mt-1 font-sans text-3xl font-semibold text-ink font-stretch-semi-expanded">{money(amount)}</p>
+                <p className="mt-1 text-xs text-mute">Nothing is charged now. Only criteria that pass are captured later.</p>
               </div>
-              <button onClick={approve} disabled={busy} className="w-full rounded-xl bg-teal-700 py-3 font-semibold text-white hover:bg-teal-800 disabled:opacity-60">
-                {busy ? "Approving…" : "Approve hold"}
+              {agentNote ? (
+                <p className="flex gap-2 rounded-2xl border border-nova/20 bg-nova/[0.06] p-3 text-xs text-mute">
+                  <span className="mt-1 size-1.5 shrink-0 rounded-full bg-nova glow-dot" />
+                  {agentNote}
+                </p>
+              ) : null}
+              <button
+                type="button"
+                onClick={approve}
+                disabled={phase !== "idle"}
+                className={`flex h-12 w-full items-center justify-center gap-2 rounded-full font-semibold transition-all duration-500 ease-out-expo ${phase === "done" ? "bg-mint text-void" : "bg-star text-void hover:brightness-95"}`}
+              >
+                {phase === "idle" ? "Approve hold" : null}
+                {phase === "busy" ? (
+                  <>
+                    <span className="size-4 animate-spin rounded-full border-2 border-void/25 border-t-void" aria-hidden />
+                    Authorizing…
+                  </>
+                ) : null}
+                {phase === "done" ? (
+                  <>
+                    <svg viewBox="0 0 16 16" className="size-4" aria-hidden>
+                      <path d="M3 8.5l3 3 7-7" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                    Held
+                  </>
+                ) : null}
               </button>
-              <button onClick={() => setOpen(false)} className="w-full text-center text-slate-500 hover:text-slate-800">
+              <button type="button" onClick={() => setOpen(false)} disabled={phase !== "idle"} className="w-full text-center text-dim transition hover:text-ink">
                 Cancel and return
               </button>
             </div>

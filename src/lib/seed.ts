@@ -1,6 +1,6 @@
 import { landingPagePreset, logoPreset } from "./criteria-presets";
 import { fakePayPalId, previewHash } from "./format";
-import type { Criterion, Milestone, Report } from "./types";
+import type { AgentMandate, Criterion, Milestone, Report } from "./types";
 
 const HOUR = 3_600_000;
 
@@ -14,6 +14,16 @@ function firstReport(criteria: Criterion[], at: string): Report {
 }
 
 const iso = (t: number) => new Date(t).toISOString();
+
+/** Sam's agent for the prototype. It can fund and release within these limits; appeals always go to Sam. */
+export const defaultMandate: AgentMandate = {
+  name: "Northwind buying agent",
+  owner: "Sam Carter",
+  perMilestoneLimit: 1000,
+  minConfidence: 0.85,
+  releaseVerified: true,
+  fundMilestones: true,
+};
 
 /** Dummy milestones for the prototype. Times are relative to `now` so countdowns stay meaningful. */
 export function makeSeed(now: number): Milestone[] {
@@ -73,6 +83,7 @@ export function makeSeed(now: number): Milestone[] {
       fundedAt: iso(t1039 + 2 * HOUR),
       submission: { url: "", prLink: "", files: ["brewly-logo-concepts.pdf", "logo.svg", "logo.png"], note: "", submittedAt: iso(t1039 + 50 * HOUR) },
       reports: [firstReport(logoCriteria, iso(t1039 + 51 * HOUR))],
+      approval: "client",
       ledger: [
         { id: fakePayPalId("AUTH", "1039a"), kind: "authorization", amount: 400, at: iso(t1039 + 2 * HOUR), note: "Client approved the hold in PayPal" },
         { id: fakePayPalId("CAP", "1039c"), kind: "capture", amount: 400, at: iso(t1039 + 60 * HOUR), note: "All criteria passed; client accepted" },
@@ -96,6 +107,7 @@ export function makeSeed(now: number): Milestone[] {
       createdAt: iso(now - 3 * 24 * HOUR),
       fundedAt: iso(now - 3 * 24 * HOUR + 4 * HOUR),
       reports: [],
+      approval: "client",
       ledger: [
         { id: fakePayPalId("AUTH", "1045a"), kind: "authorization", amount: 1500, at: iso(now - 3 * 24 * HOUR + 4 * HOUR), note: "Client approved the hold in PayPal" },
       ],
@@ -103,7 +115,7 @@ export function makeSeed(now: number): Milestone[] {
     {
       id: "m-1050",
       title: "Retouch 20 product photos",
-      clientName: "Sam's buyer agent",
+      clientName: "Northwind buying agent",
       clientEmail: "agent@northwind.example",
       freelancerName: "Riya Sharma",
       freelancerLocation: "Pune, India",
@@ -120,9 +132,22 @@ export function makeSeed(now: number): Milestone[] {
       fixDueAt: iso(t1050 + 32 * HOUR + 72 * HOUR),
       submission: { url: "", prLink: "", files: ["photos-batch-1.zip"], note: "", submittedAt: iso(t1050 + 29 * HOUR) },
       reports: [photoReport],
+      approval: "agent",
+      agentDecision: {
+        at: iso(t1050 + 32 * HOUR),
+        outcome: "released",
+        amount: 200,
+        checks: [
+          { label: "Release permission", detail: "Allowed to release verified work", ok: true },
+          { label: "Within spending limit", detail: "$200.00 of $1,000.00 allowed", ok: true },
+          { label: "Must-pass criteria", detail: "Every must-pass criterion passed", ok: true },
+          { label: "AI confidence", detail: "Lowest 86%, needs 85%", ok: true },
+          { label: "Nothing flagged for a person", detail: "No result needs human review", ok: true },
+        ],
+      },
       ledger: [
         { id: fakePayPalId("AUTH", "1050a"), kind: "authorization", amount: 250, at: iso(t1050 + HOUR), note: "Agent requested funding; Sam approved once in PayPal" },
-        { id: fakePayPalId("CAP", "1050c"), kind: "capture", amount: 200, at: iso(t1050 + 32 * HOUR), note: "Agent accepted 80% after reading the report" },
+        { id: fakePayPalId("CAP", "1050c"), kind: "capture", amount: 200, at: iso(t1050 + 32 * HOUR), note: "Northwind buying agent released verified work within its limit" },
       ],
     },
   ];

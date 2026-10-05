@@ -1,10 +1,361 @@
 @import "tailwindcss";
 
-@theme inline {
-  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
-  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
+/* PayPlan design tokens ("deep orbit"): a calm blue-ink sky where colour always means money state.
+   Starlight for actions, solar amber for money moving, ice for money held, violet for AI and agents,
+   mint for money released, flare for criteria not met. */
+@theme {
+  --color-void: #0a0e1c;
+  --color-deep: #0e1426;
+  --color-panel: #121a30;
+  --color-panel-2: #1b2440;
+  --color-edge: #26304f;
+  --color-ink: #ece8f4;
+  --color-mute: #9ca6c4;
+  --color-dim: #7d88a8;
+  --color-star: #f5f3fa;
+  --color-nova: #b9a2ff;
+  --color-ice: #82b8ff;
+  --color-sun: #ffb547;
+  --color-mint: #4fe3b0;
+  --color-flare: #ff7b72;
+
+  --font-sans: var(--font-body), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-code), ui-monospace, monospace;
+  --font-display: var(--font-headline), var(--font-body), ui-sans-serif, sans-serif;
+
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+:root {
+  color-scheme: dark;
+}
+
+html {
+  background: var(--color-void);
 }
 
 body {
+  background:
+    radial-gradient(1100px 620px at 85% -10%, rgba(185, 162, 255, 0.09), transparent 60%),
+    radial-gradient(900px 560px at -10% 30%, rgba(130, 184, 255, 0.07), transparent 60%),
+    var(--color-void);
+  background-attachment: fixed;
+  color: var(--color-ink);
   font-family: var(--font-sans);
+}
+
+::selection {
+  background: rgba(185, 162, 255, 0.35);
+  color: var(--color-star);
+}
+
+/* Film grain keeps the dark gradients from banding and gives the surface some texture. */
+.grain::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 70;
+  pointer-events: none;
+  opacity: 0.05;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+@property --beam-angle {
+  syntax: "<angle>";
+  inherits: false;
+  initial-value: 0deg;
+}
+
+@layer components {
+  /* A light that runs around the edge of whatever the AI is looking at right now. */
+  .beam {
+    position: relative;
+  }
+  .beam::after {
+    content: "";
+    position: absolute;
+    inset: -1px;
+    border-radius: inherit;
+    padding: 1px;
+    pointer-events: none;
+    background: conic-gradient(from var(--beam-angle), transparent 0 70%, var(--color-nova) 86%, #ffffff 90%, transparent 100%);
+    -webkit-mask:
+      linear-gradient(#000 0 0) content-box,
+      linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    animation: beam 2.2s linear infinite;
+  }
+
+  .shake {
+    animation: shake 360ms ease-in-out 1;
+  }
+
+  .glass {
+    background: linear-gradient(180deg, rgba(27, 36, 64, 0.62), rgba(18, 26, 48, 0.66));
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.05),
+      0 24px 48px -28px rgba(0, 0, 0, 0.8);
+    backdrop-filter: blur(14px);
+  }
+
+  /* A soft light that follows the cursor; positions come from trackSpotlight(). */
+  .spotlight {
+    position: relative;
+    isolation: isolate;
+  }
+  .spotlight::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    border-radius: inherit;
+    opacity: 0;
+    transition: opacity 300ms;
+    background: radial-gradient(380px circle at var(--mx, 50%) var(--my, 50%), rgba(185, 162, 255, 0.1), transparent 45%);
+  }
+  .spotlight:hover::before {
+    opacity: 1;
+  }
+
+  .hairline {
+    border-color: rgba(255, 255, 255, 0.08);
+  }
+
+  .glow-dot {
+    box-shadow: 0 0 10px currentColor;
+  }
+
+  .text-gradient {
+    background: linear-gradient(180deg, #ffffff 20%, #b9b0e0 120%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  /* The light sweep on primary buttons. */
+  .sheen {
+    position: relative;
+    overflow: hidden;
+  }
+  .sheen::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    transform: translateX(-120%);
+    background: linear-gradient(100deg, transparent 30%, rgba(255, 255, 255, 0.55) 50%, transparent 70%);
+    transition: transform 700ms var(--ease-out-expo);
+  }
+  .sheen:hover::after {
+    transform: translateX(120%);
+  }
+
+  .shimmer {
+    background: linear-gradient(90deg, rgba(255, 255, 255, 0.03) 0%, rgba(255, 255, 255, 0.09) 50%, rgba(255, 255, 255, 0.03) 100%);
+    background-size: 200% 100%;
+    animation: shimmer 1.4s linear infinite;
+  }
+
+  /* A dashed money line with a light travelling along it. */
+  .flow-line {
+    position: relative;
+    height: 2px;
+    background: repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.14) 0 6px, transparent 6px 11px);
+  }
+  .flow-line[data-active="true"] {
+    background: repeating-linear-gradient(90deg, rgba(79, 227, 176, 0.55) 0 6px, transparent 6px 11px);
+    background-size: 11px 2px;
+    animation: dash 0.6s linear infinite;
+  }
+  .flow-line[data-active="true"]::after {
+    content: "";
+    position: absolute;
+    top: 50%;
+    width: 8px;
+    height: 8px;
+    margin-top: -4px;
+    border-radius: 9999px;
+    background: var(--color-mint);
+    box-shadow: 0 0 14px var(--color-mint);
+    animation: travel 2.4s var(--ease-out-expo) infinite;
+  }
+
+  .rise {
+    animation: rise 700ms var(--ease-out-expo) both;
+    animation-delay: calc(var(--i, 0) * 70ms);
+  }
+
+  .toast-in {
+    animation: toast-in 500ms var(--ease-out-expo) both;
+  }
+  .toast-timer {
+    width: 100%;
+    animation-name: drain;
+    animation-timing-function: linear;
+    animation-fill-mode: forwards;
+  }
+
+  .spin-slow {
+    animation: spin 9s linear infinite;
+  }
+  .spin-slower {
+    animation: spin 60s linear infinite;
+  }
+  .breathe {
+    animation: breathe 3.2s ease-in-out infinite;
+  }
+  .ping {
+    animation: ping 1.4s cubic-bezier(0, 0, 0.2, 1) infinite;
+  }
+  .pulse-soft {
+    animation: pulse-soft 1.8s ease-in-out infinite;
+  }
+  .float {
+    animation: float 6s ease-in-out infinite;
+  }
+  .caret {
+    animation: caret 1s steps(1) infinite;
+  }
+
+  /* Range input styled as a thin orbit track with a glowing handle. */
+  .range {
+    appearance: none;
+    width: 100%;
+    height: 4px;
+    border-radius: 9999px;
+    background: linear-gradient(90deg, var(--color-nova) var(--fill, 50%), rgba(255, 255, 255, 0.1) var(--fill, 50%));
+    outline: none;
+  }
+  .range::-webkit-slider-thumb {
+    appearance: none;
+    width: 18px;
+    height: 18px;
+    border-radius: 9999px;
+    background: var(--color-star);
+    box-shadow: 0 0 0 4px rgba(185, 162, 255, 0.25), 0 0 16px rgba(185, 162, 255, 0.6);
+    cursor: pointer;
+    transition: transform 150ms;
+  }
+  .range::-webkit-slider-thumb:hover {
+    transform: scale(1.15);
+  }
+  .range::-moz-range-thumb {
+    width: 18px;
+    height: 18px;
+    border: 0;
+    border-radius: 9999px;
+    background: var(--color-star);
+    box-shadow: 0 0 0 4px rgba(185, 162, 255, 0.25), 0 0 16px rgba(185, 162, 255, 0.6);
+    cursor: pointer;
+  }
+  .range:focus-visible {
+    box-shadow: 0 0 0 3px rgba(185, 162, 255, 0.5);
+  }
+}
+
+@keyframes beam {
+  to {
+    --beam-angle: 360deg;
+  }
+}
+@keyframes shake {
+  25% {
+    transform: translateX(-2px);
+  }
+  75% {
+    transform: translateX(2px);
+  }
+}
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+    filter: blur(4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+    filter: none;
+  }
+}
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(16px) scale(0.96);
+  }
+}
+@keyframes drain {
+  to {
+    width: 0%;
+  }
+}
+@keyframes shimmer {
+  to {
+    background-position: -200% 0;
+  }
+}
+@keyframes dash {
+  to {
+    background-position: 11px 0;
+  }
+}
+@keyframes travel {
+  0% {
+    left: 0%;
+    opacity: 0;
+  }
+  15% {
+    opacity: 1;
+  }
+  85% {
+    opacity: 1;
+  }
+  100% {
+    left: calc(100% - 8px);
+    opacity: 0;
+  }
+}
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@keyframes breathe {
+  50% {
+    transform: scale(1.5);
+    opacity: 0.05;
+  }
+}
+@keyframes ping {
+  75%,
+  100% {
+    transform: scale(2.4);
+    opacity: 0;
+  }
+}
+@keyframes pulse-soft {
+  50% {
+    opacity: 0.35;
+  }
+}
+@keyframes float {
+  50% {
+    transform: translateY(-8px);
+  }
+}
+@keyframes caret {
+  50% {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 1ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 1ms !important;
+  }
 }

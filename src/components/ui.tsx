@@ -1,98 +1,135 @@
+"use client";
+
 import Link from "next/link";
 import type { ComponentProps, ReactNode } from "react";
 import { ledgerTotals } from "@/lib/decision";
-import { money } from "@/lib/format";
 import type { LedgerEntry, MilestoneStatus, Verdict } from "@/lib/types";
+import { NumberTicker, trackSpotlight } from "./motion";
 
 const buttonBase =
-  "inline-flex items-center justify-center gap-2 rounded-xl font-semibold transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-600 disabled:cursor-not-allowed disabled:opacity-50";
+  "inline-flex items-center justify-center gap-2 rounded-full font-semibold transition duration-200 active:scale-[0.97] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-nova disabled:pointer-events-none disabled:opacity-40";
 
 const buttonVariants = {
-  primary: "bg-teal-700 text-white hover:bg-teal-800",
-  secondary: "border border-slate-300 bg-white text-slate-900 hover:bg-slate-50",
-  ghost: "text-slate-700 hover:bg-slate-100",
-  danger: "border border-rose-300 bg-white text-rose-700 hover:bg-rose-50",
+  primary: "sheen bg-star text-void shadow-[0_0_0_1px_rgba(255,255,255,0.4),0_10px_30px_-10px_rgba(185,162,255,0.6)] hover:shadow-[0_0_0_1px_rgba(255,255,255,0.6),0_12px_40px_-8px_rgba(185,162,255,0.8)]",
+  secondary: "border border-white/10 bg-white/[0.04] text-ink hover:border-white/20 hover:bg-white/[0.08]",
+  ghost: "text-mute hover:bg-white/5 hover:text-ink",
+  danger: "border border-flare/40 bg-flare/5 text-flare hover:bg-flare/10",
+  agent: "sheen bg-nova text-void shadow-[0_10px_30px_-10px_rgba(185,162,255,0.8)] hover:brightness-110",
+  money: "sheen bg-sun text-void shadow-[0_0_0_1px_rgba(255,181,71,0.5),0_12px_34px_-10px_rgba(255,181,71,0.7)] hover:shadow-[0_0_0_1px_rgba(255,181,71,0.8),0_14px_44px_-8px_rgba(255,181,71,0.9)]",
 };
 
-const buttonSizes = { md: "px-4 py-2.5 text-sm", lg: "px-5 py-3 text-base" };
+const buttonSizes = { sm: "h-9 px-3.5 text-[13px]", md: "h-11 px-5 text-sm", lg: "h-13 px-6 text-[15px]" };
 
 type ButtonStyle = { variant?: keyof typeof buttonVariants; size?: keyof typeof buttonSizes };
 
 export function Button({ variant = "primary", size = "md", className = "", ...props }: ComponentProps<"button"> & ButtonStyle) {
-  return <button className={`${buttonBase} ${buttonVariants[variant]} ${buttonSizes[size]} ${className}`} {...props} />;
+  return <button type="button" className={`${buttonBase} ${buttonVariants[variant]} ${buttonSizes[size]} ${className}`} {...props} />;
 }
 
 export function ButtonLink({ variant = "primary", size = "md", className = "", ...props }: ComponentProps<typeof Link> & ButtonStyle) {
   return <Link className={`${buttonBase} ${buttonVariants[variant]} ${buttonSizes[size]} ${className}`} {...props} />;
 }
 
-export function Card({ className = "", children }: { className?: string; children: ReactNode }) {
-  return <section className={`rounded-2xl border border-slate-200 bg-white p-6 shadow-sm ${className}`}>{children}</section>;
+export function Arrow({ className = "size-4" }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 16 16" className={`${className} transition-transform duration-300 group-hover:translate-x-0.5`} aria-hidden>
+      <path d="M3 8h9M8.5 4.5L12 8l-3.5 3.5" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+/** The main surface. `interactive` adds the cursor spotlight for cards that are clickable or worth exploring. */
+export function Panel({ className = "", interactive = false, as = "section", children }: { className?: string; interactive?: boolean; as?: "section" | "div" | "article" | "aside"; children: ReactNode }) {
+  const Tag = as;
+  return (
+    <Tag onMouseMove={interactive ? trackSpotlight : undefined} className={`glass rounded-3xl p-6 ${interactive ? "spotlight" : ""} ${className}`}>
+      {children}
+    </Tag>
+  );
+}
+
+export function Eyebrow({ children, className = "" }: { children: ReactNode; className?: string }) {
+  return <p className={`font-mono text-[11px] font-medium uppercase tracking-[0.16em] text-dim ${className}`}>{children}</p>;
 }
 
 const tones = {
-  neutral: "bg-slate-100 text-slate-700 ring-slate-200",
-  good: "bg-emerald-50 text-emerald-800 ring-emerald-200",
-  warn: "bg-amber-50 text-amber-800 ring-amber-200",
-  bad: "bg-rose-50 text-rose-800 ring-rose-200",
-  info: "bg-sky-50 text-sky-800 ring-sky-200",
-  brand: "bg-teal-50 text-teal-800 ring-teal-200",
+  neutral: "bg-white/[0.05] text-mute ring-white/10",
+  good: "bg-mint/10 text-mint ring-mint/25",
+  warn: "bg-sun/10 text-sun ring-sun/25",
+  bad: "bg-flare/10 text-flare ring-flare/30",
+  info: "bg-ice/10 text-ice ring-ice/25",
+  brand: "bg-nova/10 text-nova ring-nova/25",
 };
 
 export type Tone = keyof typeof tones;
 
-export function Badge({ tone = "neutral", children }: { tone?: Tone; children: ReactNode }) {
-  return <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-semibold ring-1 ring-inset ${tones[tone]}`}>{children}</span>;
+export function Chip({ tone = "neutral", dot = false, pulse = false, children }: { tone?: Tone; dot?: boolean; pulse?: boolean; children: ReactNode }) {
+  return (
+    <span className={`inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-medium ring-1 ring-inset ${tones[tone]}`}>
+      {dot ? <span className={`size-1.5 rounded-full bg-current glow-dot ${pulse ? "pulse-soft" : ""}`} /> : null}
+      {children}
+    </span>
+  );
 }
 
-const statusInfo: Record<MilestoneStatus, { label: string; tone: Tone }> = {
+const statusInfo: Record<MilestoneStatus, { label: string; tone: Tone; pulse?: boolean }> = {
   awaiting_funding: { label: "Waiting for funding", tone: "neutral" },
   funded: { label: "Locked, waiting for work", tone: "info" },
-  verifying: { label: "Verifying", tone: "brand" },
-  awaiting_decision: { label: "Report ready", tone: "brand" },
-  fix_window: { label: "Fix window open", tone: "warn" },
+  verifying: { label: "AI checking", tone: "info", pulse: true },
+  awaiting_decision: { label: "Report ready", tone: "brand", pulse: true },
+  fix_window: { label: "Fix window open", tone: "warn", pulse: true },
   appealed: { label: "Under appeal", tone: "bad" },
   released: { label: "Paid in full", tone: "good" },
   closed: { label: "Closed", tone: "neutral" },
 };
 
-export function StatusBadge({ status }: { status: MilestoneStatus }) {
+export function StatusChip({ status }: { status: MilestoneStatus }) {
   const info = statusInfo[status];
-  return <Badge tone={info.tone}>{info.label}</Badge>;
+  return (
+    <Chip tone={info.tone} dot pulse={info.pulse}>
+      {info.label}
+    </Chip>
+  );
 }
 
-export function VerdictBadge({ verdict }: { verdict: Verdict }) {
-  if (verdict === "pass") return <Badge tone="good">Passed</Badge>;
-  if (verdict === "fail") return <Badge tone="bad">Not met</Badge>;
-  return <Badge tone="warn">Needs a person</Badge>;
+export function VerdictChip({ verdict }: { verdict: Verdict }) {
+  if (verdict === "pass") return <Chip tone="good" dot>Passed</Chip>;
+  if (verdict === "fail") return <Chip tone="bad" dot>Not met</Chip>;
+  return <Chip tone="warn" dot>Needs a person</Chip>;
 }
 
-/** Captured, held and returned money as one bar, so the money state is always visible. */
-export function MoneyBar({ ledger, amount }: { ledger: LedgerEntry[]; amount: number }) {
+/** Released, held and returned money as one bar with live numbers, so the money state is always visible. */
+export function MoneyBar({ ledger, amount, labels = true }: { ledger: LedgerEntry[]; amount: number; labels?: boolean }) {
   const t = ledgerTotals(ledger);
   const total = t.authorized || amount;
-  const pct = (v: number) => `${(v / total) * 100}%`;
+  const parts = [
+    { key: "Released", value: t.captured, color: "bg-mint", glow: "shadow-[0_0_16px_rgba(79,227,166,0.6)]" },
+    { key: "Held on client's PayPal", value: t.held, color: "bg-[repeating-linear-gradient(135deg,var(--color-ice)_0_4px,rgba(130,184,255,0.35)_4px_8px)]", glow: "" },
+    { key: "Returned", value: t.voided, color: "bg-white/25", glow: "" },
+  ];
   return (
     <div>
-      <div className="flex h-3 w-full overflow-hidden rounded-full bg-slate-100" role="img" aria-label={`${money(t.captured)} released, ${money(t.held)} held, ${money(t.voided)} returned`}>
-        <div className="bg-emerald-500" style={{ width: pct(t.captured) }} />
-        <div className="bg-amber-400" style={{ width: pct(t.held) }} />
-        <div className="bg-slate-300" style={{ width: pct(t.voided) }} />
+      <div className="flex h-2.5 w-full gap-1" role="img" aria-label={parts.map((p) => `${p.key} $${p.value.toFixed(2)}`).join(", ")}>
+        {t.authorized === 0 ? <div className="h-full flex-1 rounded-full bg-white/[0.06]" /> : null}
+        {parts.map((p) =>
+          p.value > 0 ? <div key={p.key} className={`h-full rounded-full ${p.color} ${p.glow} transition-[flex-grow] duration-700 ease-out-expo`} style={{ flexGrow: p.value / total, flexBasis: 0 }} /> : null,
+        )}
       </div>
-      <dl className="mt-3 flex flex-wrap gap-x-6 gap-y-2 text-sm">
-        <div>
-          <dt className="flex items-center gap-1.5 text-slate-500"><span className="size-2 shrink-0 rounded-full bg-emerald-500" />Released</dt>
-          <dd className="font-semibold tabular-nums">{money(t.captured)}</dd>
-        </div>
-        <div>
-          <dt className="flex items-center gap-1.5 text-slate-500"><span className="size-2 shrink-0 rounded-full bg-amber-400" />Held on client&apos;s PayPal</dt>
-          <dd className="font-semibold tabular-nums">{money(t.held)}</dd>
-        </div>
-        <div>
-          <dt className="flex items-center gap-1.5 text-slate-500"><span className="size-2 shrink-0 rounded-full bg-slate-300" />Returned</dt>
-          <dd className="font-semibold tabular-nums">{money(t.voided)}</dd>
-        </div>
-      </dl>
+      {labels ? (
+        <dl className="mt-3 flex flex-wrap gap-x-6 gap-y-2 text-[13px]">
+          {parts.map((p) => (
+            <div key={p.key}>
+              <dt className="flex items-center gap-1.5 text-dim">
+                <span className={`size-2 shrink-0 rounded-full ${p.key === "Held on client's PayPal" ? "bg-ice" : p.color}`} />
+                {p.key}
+              </dt>
+              <dd className="mt-0.5 font-medium text-ink">
+                <NumberTicker value={p.value} />
+              </dd>
+            </div>
+          ))}
+        </dl>
+      ) : null}
     </div>
   );
 }
@@ -100,17 +137,55 @@ export function MoneyBar({ ledger, amount }: { ledger: LedgerEntry[]; amount: nu
 export function Field({ label, hint, children }: { label: string; hint?: string; children: ReactNode }) {
   return (
     <label className="block">
-      <span className="text-sm font-semibold text-slate-800">{label}</span>
-      {hint ? <span className="mt-0.5 block text-xs text-slate-500">{hint}</span> : null}
-      <span className="mt-1.5 block">{children}</span>
+      <span className="text-[13px] font-medium text-ink">{label}</span>
+      {hint ? <span className="mt-0.5 block text-xs text-dim">{hint}</span> : null}
+      <span className="mt-2 block">{children}</span>
     </label>
   );
 }
 
 export const inputClass =
-  "w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:border-teal-600 focus:outline-none focus:ring-2 focus:ring-teal-600/20";
+  "w-full rounded-xl border border-white/10 bg-white/[0.03] px-3.5 py-2.5 text-sm text-ink placeholder:text-dim transition focus:border-nova/60 focus:bg-white/[0.05] focus:outline-none focus:ring-4 focus:ring-nova/15";
 
-export function RoleChip({ role }: { role: "client" | "freelancer" | "both" | "agent" }) {
-  const label = { client: "Viewing as the client", freelancer: "Viewing as the freelancer", both: "Both sides see this page", agent: "Viewing as the buyer agent" }[role];
-  return <Badge tone="info">{label}</Badge>;
+export function Toggle({ checked, onChange, label, tone = "nova" }: { checked: boolean; onChange: (v: boolean) => void; label: string; tone?: "nova" | "mint" }) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={checked}
+      aria-label={label}
+      onClick={() => onChange(!checked)}
+      className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors duration-300 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-nova ${checked ? (tone === "nova" ? "bg-nova" : "bg-mint") : "bg-white/12"}`}
+    >
+      <span className={`inline-block size-5 rounded-full bg-star shadow transition-transform duration-300 ease-out-expo ${checked ? "translate-x-[22px]" : "translate-x-0.5"}`} />
+    </button>
+  );
+}
+
+const avatarTones = {
+  freelancer: "from-[#ffc46b] to-[#ff7a66] text-void",
+  client: "from-[#a99bff] to-[#6fd3ff] text-void",
+  agent: "from-[#6fd3ff] to-[#4fe3a6] text-void",
+};
+
+export function Avatar({ name, kind, size = "md" }: { name: string; kind: keyof typeof avatarTones; size?: "sm" | "md" }) {
+  const initials = kind === "agent" ? "AI" : name.split(" ").map((p) => p[0]).slice(0, 2).join("");
+  return (
+    <span className={`inline-grid shrink-0 place-items-center rounded-full bg-gradient-to-br font-semibold ${avatarTones[kind]} ${size === "sm" ? "size-6 text-[10px]" : "size-8 text-xs"}`} aria-hidden>
+      {initials}
+    </span>
+  );
+}
+
+/** Who the visitor is pretending to be on this screen of the prototype. */
+export function RoleChip({ role, name }: { role: "client" | "freelancer" | "both" | "agent"; name?: string }) {
+  if (role === "both") return <Chip tone="brand">Both sides see this page</Chip>;
+  const label = { client: "client", freelancer: "freelancer", agent: "client's agent" }[role];
+  return (
+    <span className="inline-flex items-center gap-2 rounded-full bg-white/[0.04] py-1 pl-1 pr-3 text-xs text-mute ring-1 ring-inset ring-white/10">
+      <Avatar name={name ?? label} kind={role} size="sm" />
+      Viewing as <span className="font-medium text-ink">{name ?? label}</span>
+      {name ? <span className="text-dim">· {label}</span> : null}
+    </span>
+  );
 }
