@@ -15,6 +15,14 @@ npm run dev
 
 Open http://localhost:3000 and press **Start the walkthrough**.
 
+### Single-file preview
+
+```bash
+npm run preview:build
+```
+
+This writes `preview-dist/payplan.html`, one HTML file with the whole prototype inside. It needs no server: open `preview-dist/index.html` in a browser or host the file anywhere. The preview uses the same pages; `preview/` holds the hash router and small stand-ins for `next/link` and `next/navigation`.
+
 ## Walkthrough (7 steps)
 
 1. **Freelancer** creates a milestone. "Suggest criteria" stands in for the AI helper.
@@ -34,6 +42,7 @@ Open http://localhost:3000 and press **Start the walkthrough**.
 | `src/lib/decision.ts` | Rules engine: verdicts to releasable amount (kept for the real app) |
 | `src/lib/store.ts` | Prototype-only store (localStorage). Replaced by the API in Phase 1 |
 | `src/lib/seed.ts`, `criteria-presets.ts` | Dummy milestones and scripted verifier results |
+| `preview/` | Single-file preview build (esbuild + Tailwind CLI) |
 
 ## Next (Phase 1)
 

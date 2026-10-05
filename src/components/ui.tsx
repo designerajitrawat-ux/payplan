@@ -79,17 +79,17 @@ export function MoneyBar({ ledger, amount }: { ledger: LedgerEntry[]; amount: nu
         <div className="bg-amber-400" style={{ width: pct(t.held) }} />
         <div className="bg-slate-300" style={{ width: pct(t.voided) }} />
       </div>
-      <dl className="mt-3 grid grid-cols-3 gap-2 text-sm">
+      <dl className="mt-3 flex flex-wrap gap-x-6 gap-y-2 text-sm">
         <div>
-          <dt className="flex items-center gap-1.5 text-slate-500"><span className="size-2 rounded-full bg-emerald-500" />Released</dt>
+          <dt className="flex items-center gap-1.5 text-slate-500"><span className="size-2 shrink-0 rounded-full bg-emerald-500" />Released</dt>
           <dd className="font-semibold tabular-nums">{money(t.captured)}</dd>
         </div>
         <div>
-          <dt className="flex items-center gap-1.5 text-slate-500"><span className="size-2 rounded-full bg-amber-400" />Held on client&apos;s PayPal</dt>
+          <dt className="flex items-center gap-1.5 text-slate-500"><span className="size-2 shrink-0 rounded-full bg-amber-400" />Held on client&apos;s PayPal</dt>
           <dd className="font-semibold tabular-nums">{money(t.held)}</dd>
         </div>
         <div>
-          <dt className="flex items-center gap-1.5 text-slate-500"><span className="size-2 rounded-full bg-slate-300" />Returned</dt>
+          <dt className="flex items-center gap-1.5 text-slate-500"><span className="size-2 shrink-0 rounded-full bg-slate-300" />Returned</dt>
           <dd className="font-semibold tabular-nums">{money(t.voided)}</dd>
         </div>
       </dl>
