@@ -49,7 +49,7 @@ export function Panel({ className = "", interactive = false, as = "section", chi
 }
 
 export function Eyebrow({ children, className = "" }: { children: ReactNode; className?: string }) {
-  return <p className={`font-mono text-[11px] font-medium uppercase tracking-[0.16em] text-dim ${className}`}>{children}</p>;
+  return <p className={`font-mono text-xs font-medium uppercase tracking-[0.16em] text-dim ${className}`}>{children}</p>;
 }
 
 const tones = {
@@ -171,7 +171,7 @@ const avatarTones = {
 export function Avatar({ name, kind, size = "md" }: { name: string; kind: keyof typeof avatarTones; size?: "sm" | "md" }) {
   const initials = kind === "agent" ? "AI" : name.split(" ").map((p) => p[0]).slice(0, 2).join("");
   return (
-    <span className={`inline-grid shrink-0 place-items-center rounded-full bg-gradient-to-br font-semibold ${avatarTones[kind]} ${size === "sm" ? "size-6 text-[10px]" : "size-8 text-xs"}`} aria-hidden>
+    <span className={`inline-grid shrink-0 place-items-center rounded-full bg-gradient-to-br font-semibold ${avatarTones[kind]} ${size === "sm" ? "size-6 text-[11px]" : "size-8 text-xs"}`} aria-hidden>
       {initials}
     </span>
   );
@@ -186,6 +186,27 @@ export function RoleChip({ role, name }: { role: "client" | "freelancer" | "both
       <Avatar name={name ?? label} kind={role} size="sm" />
       Viewing as <span className="font-medium text-ink">{name ?? label}</span>
       {name ? <span className="text-dim">· {label}</span> : null}
+    </span>
+  );
+}
+
+/** A small "i" that explains a term on hover or keyboard focus. */
+export function InfoTip({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <span className="group relative inline-flex align-middle">
+      <button type="button" aria-label={`What is ${label}?`} className="inline-grid size-6 place-items-center rounded-full text-dim transition hover:text-ink focus-visible:text-ink">
+        <svg viewBox="0 0 16 16" className="size-3.5" aria-hidden>
+          <circle cx="8" cy="8" r="6.5" fill="none" stroke="currentColor" strokeWidth="1.3" />
+          <path d="M8 7.2v3.6M8 5h.01" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+        </svg>
+      </button>
+      <span
+        role="tooltip"
+        className="pointer-events-none invisible absolute bottom-full left-1/2 z-50 mb-2 w-64 -translate-x-1/2 translate-y-1 rounded-2xl border border-brand-2/25 bg-deep px-3.5 py-3 text-left text-xs font-normal normal-case leading-relaxed tracking-normal text-mute opacity-0 shadow-2xl transition duration-200 group-hover:visible group-hover:translate-y-0 group-hover:opacity-100 group-focus-within:visible group-focus-within:translate-y-0 group-focus-within:opacity-100"
+      >
+        <span className="mb-1 block font-semibold text-ink">{label}</span>
+        {children}
+      </span>
     </span>
   );
 }

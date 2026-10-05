@@ -48,6 +48,12 @@ body {
   font-family: var(--font-sans);
 }
 
+/* One visible focus ring for every interactive element (keyboard users only). */
+:focus-visible {
+  outline: 2px solid var(--color-brand-2);
+  outline-offset: 3px;
+}
+
 ::selection {
   background: rgba(167, 139, 255, 0.35);
   color: var(--color-star);
@@ -226,10 +232,11 @@ body {
   .range {
     appearance: none;
     width: 100%;
-    height: 4px;
+    height: 24px;
     border-radius: 9999px;
-    background: linear-gradient(90deg, var(--color-nova) var(--fill, 50%), rgba(255, 255, 255, 0.1) var(--fill, 50%));
+    background: linear-gradient(90deg, var(--color-nova) var(--fill, 50%), rgba(255, 255, 255, 0.14) var(--fill, 50%)) center / 100% 4px no-repeat;
     outline: none;
+    cursor: pointer;
   }
   .range::-webkit-slider-thumb {
     appearance: none;

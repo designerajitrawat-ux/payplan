@@ -45,7 +45,7 @@ export function Toaster() {
     () => EMPTY,
   );
   return (
-    <div className="pointer-events-none fixed bottom-4 left-4 z-[60] flex w-[min(360px,calc(100vw-2rem))] flex-col gap-2" role="status" aria-live="polite">
+    <div className="pointer-events-none fixed inset-x-4 top-4 z-[60] flex flex-col gap-2 sm:inset-x-auto sm:bottom-4 sm:left-4 sm:top-auto sm:w-[360px]" role="status" aria-live="polite">
       <AnimatePresence initial={false}>
         {list.map((t) => (
           <motion.div

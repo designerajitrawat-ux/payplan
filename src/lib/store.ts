@@ -133,12 +133,13 @@ export function setApproval(id: string, approval: ApprovalMode) {
 }
 
 export function submitWork(id: string, submission: Omit<Submission, "submittedAt">) {
-  update(id, (m) => ({ ...m, status: "verifying", submission: { ...submission, submittedAt: nowIso() } }));
+  update(id, (m) => ({ ...m, status: "verifying", verifyStartedAt: nowIso(), submission: { ...submission, submittedAt: nowIso() } }));
 }
 
 /** Scripted verifier: first attempt uses each criterion's first result; a fix attempt re-checks only what failed. */
 export function finishVerification(id: string) {
   update(id, (m) => {
+    if (m.status !== "verifying") return m;
     const attempt = m.reports.length + 1;
     const previous = m.reports.at(-1);
     const results: CriterionResult[] = m.criteria.map((c) => {
@@ -204,7 +205,7 @@ export function withdrawAppeal(id: string) {
 }
 
 export function startFix(id: string) {
-  update(id, (m) => ({ ...m, status: "verifying" }));
+  update(id, (m) => ({ ...m, status: "verifying", verifyStartedAt: nowIso() }));
 }
 
 export function voidRemainder(id: string) {

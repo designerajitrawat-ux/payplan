@@ -92,6 +92,9 @@ function Verifier({ m }: { m: Milestone }) {
   return (
     <div className="min-w-0 space-y-6">
       <RoleChip role="both" />
+      <p className="sr-only" aria-live="polite">
+        {running ? `Checked ${checkedCount} of ${m.criteria.length} criteria.` : `Check finished. ${finalReport?.results.filter((r) => r.verdict === "pass").length ?? 0} of ${m.criteria.length} criteria passed.`}
+      </p>
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_420px]">
         <Panel className={running ? "beam" : ""}>
@@ -152,9 +155,9 @@ function Verifier({ m }: { m: Milestone }) {
               </span>
               Checker log
             </span>
-            <span className="font-mono text-[11px] text-dim">{lines.length} lines</span>
+            <span className="font-mono text-xs text-dim">{lines.length} lines</span>
           </div>
-          <ol ref={logRef} className="max-h-80 space-y-2 overflow-auto p-5 font-mono text-[12px] leading-relaxed">
+          <ol ref={logRef} tabIndex={0} aria-label="Checker log lines" className="max-h-80 space-y-2 overflow-auto p-5 font-mono text-[12px] leading-relaxed">
             {lines.map((l, i) => (
               <li key={`${l.verb}-${i}`} className="rise flex gap-3" style={{ animationDuration: "400ms" }}>
                 <span className="shrink-0 text-dim">{clock.format(new Date(l.t))}</span>

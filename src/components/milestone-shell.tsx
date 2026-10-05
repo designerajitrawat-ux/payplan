@@ -5,7 +5,7 @@ import { useParams } from "next/navigation";
 import type { ReactNode } from "react";
 import { FlowSteps } from "@/components/flow-steps";
 import { CopyButton } from "@/components/motion";
-import { Chip, Panel, StatusChip } from "@/components/ui";
+import { Chip, InfoTip, Panel, StatusChip } from "@/components/ui";
 import { money, shortHash } from "@/lib/format";
 import { useMilestone } from "@/lib/store";
 import type { Milestone } from "@/lib/types";
@@ -42,7 +42,7 @@ export function MilestoneShell({ children }: { children: (m: Milestone) => React
     <div className="min-w-0 space-y-8">
       <header className="space-y-5">
         <div className="flex flex-wrap items-center gap-2 text-[13px] text-dim">
-          <Link href="/dashboard" className="transition hover:text-ink">
+          <Link href="/dashboard" className="inline-flex min-h-7 items-center transition hover:text-ink">
             Milestones
           </Link>
           <span aria-hidden>/</span>
@@ -67,9 +67,10 @@ export function MilestoneShell({ children }: { children: (m: Milestone) => React
         </div>
         <FlowSteps status={m.status} />
         <p className="flex flex-wrap items-center gap-1.5 text-xs text-dim">
-          Spec hash <span className="font-mono text-mute">{shortHash(m.specHash)}</span>
+          Agreement ID <span className="font-mono text-mute">{shortHash(m.specHash)}</span>
+          <InfoTip label="Agreement ID">A fingerprint of the criteria, weights and amount. It is locked when the client funds, so nobody can change the deal afterwards.</InfoTip>
           <CopyButton value={m.specHash} />
-          <span>· frozen when funded</span>
+          <span>· locked when funded</span>
         </p>
       </header>
       {children(m)}

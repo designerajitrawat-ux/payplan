@@ -64,6 +64,15 @@ export function SpecBuilder() {
     }, 1200);
   }
 
+  /** Gives every criterion the same weight; any remainder goes to the first ones so the total is exactly 100. */
+  function splitEvenly() {
+    setCriteria((list) => {
+      const base = Math.floor(100 / list.length);
+      const extra = 100 - base * list.length;
+      return list.map((c, i) => ({ ...c, weight: base + (i < extra ? 1 : 0) }));
+    });
+  }
+
   function change(key: number, patch: Partial<Draft>) {
     setCriteria((list) => list.map((c) => (c.key === key ? { ...c, ...patch } : c)));
   }
@@ -152,7 +161,14 @@ export function SpecBuilder() {
           <Panel>
             <div className="flex flex-wrap items-center justify-between gap-2">
               <h2 className="font-display text-lg font-semibold">Acceptance criteria</h2>
-              <span className={`font-mono text-xs tabular-nums ${totalWeight === 100 ? "text-mint" : "text-sun"}`}>Weights: {totalWeight}% of 100%</span>
+              <span className="flex items-center gap-2">
+                <span className={`font-mono text-xs tabular-nums ${totalWeight === 100 ? "text-mint" : "text-sun"}`}>Weights: {totalWeight}% of 100%</span>
+                {criteria.length > 0 && totalWeight !== 100 ? (
+                  <Button variant="secondary" size="sm" onClick={splitEvenly}>
+                    Split evenly
+                  </Button>
+                ) : null}
+              </span>
             </div>
             <p className="mt-1 text-sm text-mute">
               Each passed criterion releases its weight. A <span className="text-ink">must-pass</span> criterion that fails releases nothing until it is fixed.

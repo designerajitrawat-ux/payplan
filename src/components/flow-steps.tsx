@@ -27,7 +27,7 @@ export function FlowSteps({ status }: { status: MilestoneStatus }) {
                 state === "done" ? "bg-brand" : state === "current" ? "bg-gradient-to-r from-brand-2 to-brand/10 shadow-[0_0_14px_rgba(122,162,255,0.8)]" : "bg-white/[0.1]"
               }`}
             />
-            <span className={`mt-2 block truncate text-[11px] font-medium sm:text-xs ${state === "todo" ? "text-dim" : state === "current" ? "text-ink" : "text-mute"}`}>
+            <span className={`mt-2 block truncate text-xs font-medium sm:text-xs ${state === "todo" ? "text-dim" : state === "current" ? "text-ink" : "text-mute"}`}>
               <span className="hidden font-mono text-dim sm:inline">{String(i + 1).padStart(2, "0")} </span>
               {label}
             </span>

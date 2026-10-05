@@ -50,7 +50,7 @@ function CheckList({ checks, shown }: { checks: AgentCheck[]; shown: number }) {
               <span className={`block text-sm ${visible || thinking ? "text-ink" : "text-dim"}`}>{c.label}</span>
               <span className={`block text-xs transition-opacity duration-500 ${visible ? "text-mute opacity-100" : "opacity-0"}`}>{c.detail}</span>
             </span>
-            <span className={`font-mono text-[11px] ${visible ? (c.ok ? "text-mint" : "text-flare") : "text-transparent"}`}>{c.ok ? "GO" : "NO-GO"}</span>
+            <span className={`font-mono text-xs ${visible ? (c.ok ? "text-mint" : "text-flare") : "text-transparent"}`}>{c.ok ? "GO" : "NO-GO"}</span>
           </motion.li>
         );
       })}
@@ -127,7 +127,7 @@ function AgentDecision({ m }: { m: Milestone }) {
           <Button variant="secondary" className="mt-5 w-full" onClick={() => setApproval(m.id, "client")}>
             Stop, I&apos;ll decide myself
           </Button>
-          <Link href="/agents" className="mt-3 block text-center text-xs text-nova underline-offset-4 hover:underline">
+          <Link href="/agents" className="mt-2 flex min-h-8 items-center justify-center text-xs text-nova underline-offset-4 hover:underline">
             Change the agent&apos;s limits
           </Link>
         </Panel>
@@ -188,13 +188,12 @@ function ManualDecision({ m }: { m: Milestone }) {
           <div className="mt-6">
             <MoneyBar ledger={m.ledger} amount={m.amount} />
           </div>
-          <div className="mt-7 flex flex-wrap items-center gap-3">
+          <div className="mt-7 flex flex-wrap items-start gap-3">
             <HoldButton onComplete={release}>Hold to release {money(releasable)}</HoldButton>
             <Button size="lg" variant="danger" onClick={() => setAppealing((v) => !v)}>
               Appeal to a person
             </Button>
           </div>
-          <p className="mt-3 text-xs text-dim">Press and hold for a second, so money never moves by accident.</p>
           {appealing ? (
             <div className="rise mt-6 space-y-3 rounded-2xl border border-flare/25 bg-flare/[0.04] p-4">
               <Field label="What is wrong with the verdict?" hint="A person reviews the evidence. Nothing is released until then.">

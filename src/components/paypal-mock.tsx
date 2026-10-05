@@ -1,8 +1,9 @@
 "use client";
 
 import { AnimatePresence, motion } from "motion/react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 import { money } from "@/lib/format";
+import { InfoTip } from "./ui";
 
 type Phase = "idle" | "busy" | "done";
 
@@ -13,15 +14,40 @@ type Phase = "idle" | "busy" | "done";
 export function PayPalMockButton({ amount, payerEmail, agentNote, onApprove }: { amount: number; payerEmail: string; agentNote?: string; onApprove: () => void }) {
   const [open, setOpen] = useState(false);
   const [phase, setPhase] = useState<Phase>("idle");
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const primaryRef = useRef<HTMLButtonElement>(null);
+  const dialogRef = useRef<HTMLDivElement>(null);
 
+  // Focus moves into the dialog when it opens and back to the trigger when it closes.
   useEffect(() => {
-    if (!open) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape" && phase === "idle") setOpen(false);
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [open, phase]);
+    if (open) primaryRef.current?.focus();
+  }, [open]);
+
+  function close() {
+    setOpen(false);
+    triggerRef.current?.focus();
+  }
+
+  // Escape closes; Tab stays inside the dialog.
+  function onDialogKey(e: KeyboardEvent<HTMLDivElement>) {
+    if (e.key === "Escape" && phase === "idle") {
+      e.preventDefault();
+      close();
+      return;
+    }
+    if (e.key !== "Tab" || !dialogRef.current) return;
+    const items = Array.from(dialogRef.current.querySelectorAll<HTMLElement>("button:not([disabled])"));
+    if (items.length === 0) return;
+    const first = items[0];
+    const last = items[items.length - 1];
+    if (e.shiftKey && document.activeElement === first) {
+      e.preventDefault();
+      last.focus();
+    } else if (!e.shiftKey && document.activeElement === last) {
+      e.preventDefault();
+      first.focus();
+    }
+  }
 
   function approve() {
     setPhase("busy");
@@ -36,6 +62,7 @@ export function PayPalMockButton({ amount, payerEmail, agentNote, onApprove }: {
   return (
     <>
       <button
+        ref={triggerRef}
         type="button"
         onClick={() => setOpen(true)}
         className="sheen group flex h-13 w-full items-center justify-center gap-2 rounded-full bg-sun px-5 font-semibold text-void shadow-[0_0_0_1px_rgba(255,197,61,0.5),0_12px_34px_-10px_rgba(255,197,61,0.7)] transition active:scale-[0.98] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-2"
@@ -45,7 +72,7 @@ export function PayPalMockButton({ amount, payerEmail, agentNote, onApprove }: {
           <path d="M7 9V6.5a3 3 0 016 0V9" fill="none" stroke="currentColor" strokeWidth="1.8" />
         </svg>
         Approve hold with PayPal
-        <span className="rounded-full bg-void/15 px-2 py-0.5 text-[11px] font-semibold">simulated</span>
+        <span className="rounded-full bg-void/15 px-2 py-0.5 text-xs font-semibold">simulated</span>
       </button>
       <AnimatePresence>
         {open ? (
@@ -55,6 +82,8 @@ export function PayPalMockButton({ amount, payerEmail, agentNote, onApprove }: {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.2 }}
+            ref={dialogRef}
+            onKeyDown={onDialogKey}
             className="fixed inset-0 z-50 flex items-center justify-center bg-void/70 p-4 backdrop-blur-sm"
             role="dialog"
             aria-modal="true"
@@ -70,9 +99,9 @@ export function PayPalMockButton({ amount, payerEmail, agentNote, onApprove }: {
               <div className="flex items-center justify-between border-b border-white/[0.08] px-5 py-4">
                 <p id="pp-title" className="flex items-center gap-2 font-semibold text-ink">
                   Payment approval
-                  <span className="rounded-full bg-sun/10 px-2 py-0.5 text-[11px] font-semibold text-sun ring-1 ring-inset ring-sun/25">simulated</span>
+                  <span className="rounded-full bg-sun/10 px-2 py-0.5 text-xs font-semibold text-sun ring-1 ring-inset ring-sun/25">simulated</span>
                 </p>
-                <button type="button" onClick={() => setOpen(false)} disabled={phase !== "idle"} className="rounded-md p-1.5 text-dim transition hover:bg-white/5 hover:text-ink" aria-label="Close">
+                <button type="button" onClick={close} disabled={phase !== "idle"} className="rounded-md p-1.5 text-dim transition hover:bg-white/5 hover:text-ink" aria-label="Close">
                   <svg viewBox="0 0 16 16" className="size-4" aria-hidden>
                     <path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
                   </svg>
@@ -81,7 +110,10 @@ export function PayPalMockButton({ amount, payerEmail, agentNote, onApprove }: {
               <div className="space-y-4 p-5 text-sm">
                 <p className="text-mute">In the real app, PayPal&apos;s own checkout opens here and {payerEmail || "the client"} logs in.</p>
                 <div className="rounded-2xl border border-ice/20 bg-ice/[0.06] p-4">
-                  <p className="font-mono text-[11px] uppercase tracking-[0.16em] text-ice">Authorization hold</p>
+                  <p className="flex items-center gap-1 font-mono text-xs uppercase tracking-[0.16em] text-ice">
+                    Authorization hold
+                    <InfoTip label="Authorization hold">PayPal reserves the amount on your account without charging it. Only the share that passes is captured; whatever is left is released back to you.</InfoTip>
+                  </p>
                   <p className="mt-1 font-sans text-3xl font-semibold text-ink font-stretch-semi-expanded">{money(amount)}</p>
                   <p className="mt-1 text-xs text-mute">Nothing is charged now. Only criteria that pass are captured later.</p>
                 </div>
@@ -92,6 +124,7 @@ export function PayPalMockButton({ amount, payerEmail, agentNote, onApprove }: {
                   </p>
                 ) : null}
                 <motion.button
+                  ref={primaryRef}
                   type="button"
                   onClick={approve}
                   disabled={phase !== "idle"}
@@ -125,7 +158,7 @@ export function PayPalMockButton({ amount, payerEmail, agentNote, onApprove }: {
                     </motion.span>
                 </AnimatePresence>
               </motion.button>
-              <button type="button" onClick={() => setOpen(false)} disabled={phase !== "idle"} className="w-full text-center text-dim transition hover:text-ink">
+              <button type="button" onClick={close} disabled={phase !== "idle"} className="min-h-10 w-full rounded-full text-center text-dim transition hover:text-ink">
                 Cancel and return
               </button>
             </div>

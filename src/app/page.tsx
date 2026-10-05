@@ -89,7 +89,7 @@ export default function Home() {
 
       <section id="how" className="scroll-mt-20 pt-28">
         <InView className="mx-auto max-w-3xl px-4 text-center sm:px-6">
-          <p className="font-mono text-[11px] uppercase tracking-[0.16em] text-nova">How it works</p>
+          <p className="font-mono text-xs uppercase tracking-[0.16em] text-nova">How it works</p>
           <h2 className="mt-3 font-display text-4xl font-semibold tracking-[-0.03em] text-balance font-stretch-semi-expanded sm:text-5xl">From a handshake to a payout.</h2>
           <p className="mx-auto mt-4 max-w-lg text-mute">Scroll through one $1,000 milestone. The orbit is the PayPal hold, split into the five things that were agreed.</p>
         </InView>
@@ -100,7 +100,7 @@ export default function Home() {
 
       <section id="try" className="mx-auto grid max-w-7xl scroll-mt-20 gap-10 px-4 py-24 sm:px-6 lg:grid-cols-[0.9fr_1.1fr] lg:items-center">
         <InView>
-          <p className="font-mono text-[11px] uppercase tracking-[0.16em] text-nova">Try the checker</p>
+          <p className="font-mono text-xs uppercase tracking-[0.16em] text-nova">Try the checker</p>
           <h2 className="mt-3 font-display text-4xl font-semibold tracking-[-0.03em] text-balance font-stretch-semi-expanded">Watch money unlock as each check passes.</h2>
           <p className="mt-4 max-w-md leading-relaxed text-mute">Every criterion carries its share of the payment. When the AI confirms it with evidence, that share can be captured. A failed check holds back only its own part.</p>
         </InView>
@@ -111,7 +111,7 @@ export default function Home() {
 
       <section className="pb-24">
         <InView className="mx-auto mb-10 max-w-7xl px-4 sm:px-6">
-          <p className="font-mono text-[11px] uppercase tracking-[0.16em] text-nova">Details that matter</p>
+          <p className="font-mono text-xs uppercase tracking-[0.16em] text-nova">Details that matter</p>
           <h2 className="mt-3 max-w-2xl font-display text-4xl font-semibold tracking-[-0.03em] text-balance font-stretch-semi-expanded">Built so nobody has to trust anybody.</h2>
         </InView>
         <Bento />
@@ -119,7 +119,7 @@ export default function Home() {
 
       <section className="mx-auto max-w-7xl px-4 pb-24 sm:px-6">
         <InView>
-          <p className="font-mono text-[11px] uppercase tracking-[0.16em] text-nova">Built on the PayPal platform</p>
+          <p className="font-mono text-xs uppercase tracking-[0.16em] text-nova">Built on the PayPal platform</p>
           <h2 className="mt-3 max-w-2xl font-display text-4xl font-semibold tracking-[-0.03em] text-balance font-stretch-semi-expanded">Every money move is a real PayPal call.</h2>
         </InView>
         <InView delay={0.1}>

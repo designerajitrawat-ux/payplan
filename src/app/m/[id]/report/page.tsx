@@ -6,7 +6,7 @@ import { MilestoneOrbit } from "@/components/milestone-orbit";
 import { MilestoneShell, partyNames } from "@/components/milestone-shell";
 import { CopyButton, NumberTicker, trackSpotlight } from "@/components/motion";
 import { Countdown, When } from "@/components/time";
-import { Arrow, Button, ButtonLink, Chip, Eyebrow, Panel, RoleChip, VerdictChip } from "@/components/ui";
+import { Arrow, Button, ButtonLink, Chip, Eyebrow, InfoTip, Panel, RoleChip, VerdictChip } from "@/components/ui";
 import { activityFor, type Actor } from "@/lib/activity";
 import { ledgerTotals, releasableAmount } from "@/lib/decision";
 import { money, shortHash } from "@/lib/format";
@@ -25,7 +25,7 @@ function EvidenceThumb({ criterion, result }: { criterion: Criterion; result: Cr
         <div className="mt-1 h-1 w-2/3 rounded bg-white/10" />
         <div className={`mt-2 h-2.5 w-8 rounded ${bad ? "bg-flare/60" : "bg-nova/70"}`} />
       </div>
-      {bad ? <span className="absolute bottom-2 right-2 rounded-md bg-flare px-1.5 py-0.5 font-mono text-[10px] font-semibold text-void">500</span> : null}
+      {bad ? <span className="absolute bottom-2 right-2 rounded-md bg-flare px-1.5 py-0.5 font-mono text-[11px] font-semibold text-void">500</span> : null}
     </div>
   );
 }
@@ -152,7 +152,10 @@ function ReportView({ m }: { m: Milestone }) {
 
       <section aria-label="Evidence per criterion" className="space-y-3">
         <div className="flex items-baseline justify-between gap-3">
-          <h2 className="font-display text-xl font-semibold">Evidence</h2>
+          <h2 className="flex items-center gap-1 font-display text-xl font-semibold">
+            Evidence
+            <InfoTip label="AI confidence">The ring shows how sure the checker is about each verdict. Automatic tests are near 100%. AI rubric scores below the agent&apos;s limit are handed to a person.</InfoTip>
+          </h2>
           <span className="text-xs text-dim">{m.criteria.length} criteria · same view for both sides</span>
         </div>
         {failedCriteria.map((c) => {
@@ -222,7 +225,7 @@ function ReportView({ m }: { m: Milestone }) {
             <Eyebrow>Signature</Eyebrow>
             <dl className="mt-4 space-y-2.5 text-sm">
               <div className="flex flex-wrap items-center justify-between gap-2">
-                <dt className="text-dim">Spec hash</dt>
+                <dt className="text-dim">Agreement ID</dt>
                 <dd className="flex items-center gap-1 font-mono text-xs text-ink">
                   {shortHash(m.specHash)}
                   <CopyButton value={m.specHash} />
@@ -248,10 +251,10 @@ function ReportView({ m }: { m: Milestone }) {
           <section aria-label="PayPal calls" className="overflow-hidden rounded-3xl border border-white/[0.08] bg-void/80">
             <div className="flex flex-wrap items-center justify-between gap-2 border-b border-white/[0.06] px-5 py-3.5">
               <span className="text-sm font-medium text-ink">PayPal calls</span>
-              <span className="font-mono text-[11px] text-dim">simulated · sandbox in Phase 1</span>
+              <span className="font-mono text-xs text-dim">simulated · sandbox in Phase 1</span>
             </div>
-            <div className="overflow-x-auto">
-              <table className="w-full min-w-[520px] font-mono text-[11.5px]">
+            <div className="overflow-x-auto" tabIndex={0} role="region" aria-label="PayPal calls, scrolls sideways">
+              <table className="w-full min-w-[520px] font-mono text-xs">
                 <tbody>
                   {apiTrail(m, releasable).map((row, i) => (
                     <tr key={i} className="border-b border-white/[0.04] last:border-0">

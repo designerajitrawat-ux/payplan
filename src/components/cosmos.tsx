@@ -397,7 +397,7 @@ export function ConfidenceRing({ value, tone = "mint" }: { value: number; tone?:
         <circle cx="18" cy="18" r={r} fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth="3" />
         <circle cx="18" cy="18" r={r} fill="none" stroke={`var(--color-${tone})`} strokeWidth="3" strokeLinecap="round" strokeDasharray={`${value * circ} ${circ}`} style={{ transition: "stroke-dasharray 900ms cubic-bezier(.16,1,.3,1)" }} />
       </svg>
-      <span className="font-mono text-[10px] text-ink">{Math.round(value * 100)}</span>
+      <span className="font-mono text-[11px] text-ink">{Math.round(value * 100)}</span>
     </span>
   );
 }

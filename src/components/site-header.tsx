@@ -3,8 +3,8 @@
 import { MotionConfig, motion } from "motion/react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import type { ReactNode } from "react";
-import { resetDemo, useMilestones } from "@/lib/store";
+import { useEffect, type ReactNode } from "react";
+import { finishVerification, resetDemo, useMilestones } from "@/lib/store";
 import { Starfield } from "./cosmos";
 import { toast, Toaster } from "./toast";
 
@@ -61,7 +61,20 @@ function Sidebar() {
         <Link href="/" aria-label="PayPlan home">
           <Logo />
         </Link>
-        <span className="rounded-full bg-sun/10 px-2 py-0.5 font-mono text-[10px] uppercase tracking-widest text-sun ring-1 ring-inset ring-sun/25 lg:hidden">Prototype</span>
+        <span className="flex items-center gap-2 lg:hidden">
+          <span className="rounded-full bg-sun/10 px-2 py-0.5 font-mono text-[11px] uppercase tracking-widest text-sun ring-1 ring-inset ring-sun/25">Prototype</span>
+          <button
+            type="button"
+            onClick={() => {
+              resetDemo();
+              toast("Demo reset", "Example milestones are back to their first state.", "info");
+              router.push("/");
+            }}
+            className="inline-flex min-h-8 items-center rounded-lg px-2.5 text-xs font-medium text-dim transition hover:bg-white/[0.06] hover:text-ink"
+          >
+            Reset
+          </button>
+        </span>
       </div>
       <ul className="-mx-1 flex gap-1 overflow-x-auto px-1 lg:flex-col">
         {nav.map((item) => {
@@ -91,7 +104,7 @@ function Sidebar() {
                 ) : (
                   item.label
                 )}
-                {item.href === "/dashboard" && waiting > 0 ? <span className="ml-auto rounded-full bg-brand px-1.5 text-[11px] font-semibold text-white">{waiting}</span> : null}
+                {item.href === "/dashboard" && waiting > 0 ? <span className="ml-auto rounded-full bg-brand px-1.5 text-xs font-semibold text-white">{waiting}</span> : null}
               </Link>
             </li>
           );
@@ -146,6 +159,37 @@ function MarketingHeader() {
 
 const disclaimer = "Prototype with dummy data. No real payments are made. PayPal is a trademark of PayPal, Inc.; this project is not affiliated with PayPal.";
 
+/**
+ * Finishes an AI check even if the person left the verify page, so a milestone never stays
+ * "checking" forever. The verify page finishes sooner when it is open.
+ */
+function BackgroundChecks() {
+  const milestones = useMilestones();
+  useEffect(() => {
+    const timers = milestones
+      .filter((m) => m.status === "verifying")
+      .map((m) => {
+        const started = Date.parse(m.verifyStartedAt ?? m.submission?.submittedAt ?? m.createdAt);
+        const due = started + (m.criteria.length + 1) * 1100 + 4000;
+        return setTimeout(() => finishVerification(m.id), Math.max(0, due - Date.now()));
+      });
+    return () => timers.forEach(clearTimeout);
+  }, [milestones]);
+  return null;
+}
+
+function SkipLink() {
+  return (
+    <button
+      type="button"
+      onClick={() => document.getElementById("content")?.focus()}
+      className="sr-only rounded-full bg-brand px-4 py-2 text-sm font-semibold text-white focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[80]"
+    >
+      Skip to content
+    </button>
+  );
+}
+
 /** Page frame: a marketing header on the landing page, a sidebar app everywhere else. */
 export function Chrome({ children }: { children: ReactNode }) {
   const pathname = usePathname();
@@ -153,11 +197,15 @@ export function Chrome({ children }: { children: ReactNode }) {
   return (
     <MotionConfig reducedMotion="user" transition={{ type: "spring", bounce: 0.15, duration: 0.6 }}>
       <div className="grain relative isolate min-h-screen">
+        <SkipLink />
+        <BackgroundChecks />
         <Starfield />
         {landing ? (
           <>
             <MarketingHeader />
-            <main>{children}</main>
+            <main id="content" tabIndex={-1} className="outline-none">
+              {children}
+            </main>
             <footer className="border-t border-white/[0.06]">
               <p className="mx-auto max-w-7xl px-4 py-8 text-xs text-dim sm:px-6">{disclaimer}</p>
             </footer>
@@ -169,10 +217,12 @@ export function Chrome({ children }: { children: ReactNode }) {
               {/* Enter-only transition: exit animations fight the router, which swaps the page immediately. */}
               <motion.main
                 key={pathname}
+                id="content"
+                tabIndex={-1}
                 initial={{ opacity: 0, y: 14, filter: "blur(6px)" }}
                 animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
                 transition={{ type: "spring", bounce: 0, duration: 0.5 }}
-                className="mx-auto w-full max-w-6xl px-4 pb-44 pt-6 sm:px-8 lg:pt-10"
+                className="mx-auto w-full max-w-6xl px-4 pb-44 pt-6 outline-none sm:px-8 lg:pt-10"
               >
                 {children}
               </motion.main>

@@ -24,7 +24,7 @@ export function DemoGuide({ step, children, next }: { step: number | "tour"; chi
         >
           <div className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-3">
-              <p className="font-mono text-[11px] uppercase tracking-[0.16em] text-sun">{step === "tour" ? "Tour" : `Step ${step} of ${TOTAL}`}</p>
+              <p className="font-mono text-xs uppercase tracking-[0.16em] text-sun">{step === "tour" ? "Tour" : `Step ${step} of ${TOTAL}`}</p>
               {step === "tour" ? null : (
                 <span className="flex gap-1" aria-hidden>
                   {Array.from({ length: TOTAL }, (_, i) => (
@@ -33,7 +33,7 @@ export function DemoGuide({ step, children, next }: { step: number | "tour"; chi
                 </span>
               )}
             </div>
-            <button type="button" onClick={() => setOpen(false)} className="rounded-md px-1.5 py-0.5 text-xs text-dim transition hover:bg-white/5 hover:text-ink" aria-label="Hide walkthrough">
+            <button type="button" onClick={() => setOpen(false)} className="inline-flex min-h-8 items-center rounded-lg px-2.5 text-xs text-dim transition hover:bg-white/5 hover:text-ink" aria-label="Hide walkthrough">
               Hide
             </button>
           </div>

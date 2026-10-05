@@ -11,7 +11,8 @@ const spring = { type: "spring", bounce: 0.2, duration: 0.8 } as const;
 export function WordReveal({ text, className = "", wordClassName = "", delay = 0 }: { text: string; className?: string; wordClassName?: string; delay?: number }) {
   const words = text.split(" ");
   return (
-    <span className={className} aria-label={text}>
+    <span className={className}>
+      <span className="sr-only">{text}</span>
       {words.map((w, i) => (
         <motion.span
           key={`${w}-${i}`}
@@ -76,7 +77,7 @@ export function ProductWindow() {
           <span className="size-2.5 rounded-full bg-white/15" />
           <span className="size-2.5 rounded-full bg-white/15" />
           <span className="size-2.5 rounded-full bg-white/15" />
-          <span className="mx-auto hidden rounded-full bg-white/[0.04] px-4 py-1 font-mono text-[11px] text-dim sm:block">payplan.app/m/m-1051/report</span>
+          <span className="mx-auto hidden rounded-full bg-white/[0.04] px-4 py-1 font-mono text-xs text-dim sm:block">payplan.app/m/m-1051/report</span>
         </div>
         <div className="grid gap-4 rounded-[22px] bg-void/80 p-4 sm:p-6 lg:grid-cols-[180px_minmax(0,1fr)]">
           <div className="hidden flex-col gap-1.5 text-[13px] lg:flex">
@@ -89,10 +90,10 @@ export function ProductWindow() {
           <div className="min-w-0 space-y-4">
             <div className="flex flex-wrap items-end justify-between gap-2">
               <div>
-                <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-dim">Acceptance report · attempt 1</p>
+                <p className="font-mono text-[11px] uppercase tracking-[0.16em] text-dim">Acceptance report · attempt 1</p>
                 <p className="mt-1 font-display text-xl font-semibold text-ink sm:text-2xl">Landing page for Northwind</p>
               </div>
-              <span className="rounded-full bg-nova/10 px-2.5 py-1 text-[11px] text-nova ring-1 ring-inset ring-nova/25">Report ready</span>
+              <span className="rounded-full bg-nova/10 px-2.5 py-1 text-xs text-nova ring-1 ring-inset ring-nova/25">Report ready</span>
             </div>
             <div className="grid gap-4 rounded-2xl border border-white/[0.06] bg-white/[0.02] p-4 md:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] md:items-center">
               <div>
@@ -271,7 +272,7 @@ function Tile({ className = "", eyebrow, title, children }: { className?: string
       transition={{ type: "spring", bounce: 0.3, duration: 0.5 }}
       className={`spotlight glass flex h-full flex-col overflow-hidden rounded-[28px] p-6 ${className}`}
     >
-      <p className="font-mono text-[11px] uppercase tracking-[0.16em] text-dim">{eyebrow}</p>
+      <p className="font-mono text-xs uppercase tracking-[0.16em] text-dim">{eyebrow}</p>
       <h3 className="mt-2 font-display text-xl font-semibold text-ink">{title}</h3>
       <div className="mt-6 flex flex-1 flex-col justify-end">{children}</div>
     </motion.article>
@@ -293,7 +294,7 @@ export function Bento() {
               <p className="font-sans text-3xl font-semibold text-mint font-stretch-semi-expanded">
                 <NumberTicker value={released ? 800 : 0} duration={900} />
               </p>
-              <p className="text-xs text-dim">{released ? "Captured on PayPal" : "Press and hold for a second"}</p>
+              <p className="text-xs text-dim">{released ? "Captured on PayPal" : "Released to Riya"}</p>
             </div>
             {released ? (
               <button type="button" onClick={() => setReleased(false)} className="text-xs text-dim underline-offset-4 hover:text-ink hover:underline">

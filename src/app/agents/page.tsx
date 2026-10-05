@@ -31,7 +31,7 @@ function SpendBar({ amount, limit }: { amount: number; limit: number }) {
   const over = amount > limit;
   return (
     <div className="mt-5">
-      <div className="flex justify-between text-[11px] text-dim">
+      <div className="flex justify-between text-xs text-dim">
         <span>
           This release <span className={over ? "text-flare" : "text-ink"}>{money(amount)}</span>
         </span>
@@ -152,7 +152,7 @@ export default function AgentsPage() {
                   <span className="block text-sm text-ink">Open or settle appeals</span>
                   <span className="block text-xs text-dim">Always a person. Agents can never appeal or settle one.</span>
                 </span>
-                <span className="font-mono text-[11px] uppercase tracking-widest text-dim">Locked</span>
+                <span className="font-mono text-xs uppercase tracking-widest text-dim">Locked</span>
               </li>
             </ul>
             <p className="mt-4 rounded-2xl border border-ice/20 bg-ice/[0.05] p-3.5 text-xs leading-relaxed text-ice">
@@ -170,7 +170,7 @@ export default function AgentsPage() {
                 </li>
               ))}
             </ul>
-            <pre className="mt-5 overflow-x-auto rounded-2xl border border-white/[0.06] bg-void/70 p-4 font-mono text-xs leading-relaxed text-mute">
+            <pre tabIndex={0} aria-label="Example tool call" className="mt-5 overflow-x-auto rounded-2xl border border-white/[0.06] bg-void/70 p-4 font-mono text-xs leading-relaxed text-mute">
               <span className="text-nova">release_verified</span>({"{"} milestone: <span className="text-sun">&quot;m-1051&quot;</span>, max: <span className="text-sun">{mandate.perMilestoneLimit}</span> {"}"})
             </pre>
           </Panel>

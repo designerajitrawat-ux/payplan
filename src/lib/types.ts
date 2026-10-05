@@ -100,6 +100,8 @@ export type Milestone = {
   decisionDueAt?: string;
   fixDueAt?: string;
   submission?: Submission;
+  /** When the latest AI check started, so it can finish even if nobody is watching the page. */
+  verifyStartedAt?: string;
   reports: Report[];
   ledger: LedgerEntry[];
   appealReason?: string;

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, useSyncExternalStore, type MouseEvent, type ReactNode } from "react";
+import { useEffect, useId, useRef, useState, useSyncExternalStore, type MouseEvent, type ReactNode } from "react";
 import { money } from "@/lib/format";
 
 // Small motion helpers. Every effect respects the visitor's reduced-motion setting.
@@ -119,7 +119,7 @@ export function CopyButton({ value, label = "Copy", className = "" }: { value: s
     <button
       type="button"
       onClick={copy}
-      className={`inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[11px] font-medium text-dim transition hover:bg-white/5 hover:text-ink ${className}`}
+      className={`inline-flex h-7 items-center gap-1 rounded-lg px-2 text-xs font-medium text-dim transition hover:bg-white/5 hover:text-ink ${className}`}
       aria-label={copied ? "Copied" : `${label} ${value}`}
     >
       {copied ? (
@@ -137,14 +137,20 @@ export function CopyButton({ value, label = "Copy", className = "" }: { value: s
   );
 }
 
-/** Press and hold to confirm a money action; letting go early cancels it. Works with Space or Enter too. */
+/** Press and hold to confirm a money action; letting go early cancels it and explains why. Works with Space or Enter too. */
 export function HoldButton({ onComplete, children, duration = 1200, className = "" }: { onComplete: () => void; children: ReactNode; duration?: number; className?: string }) {
   const [progress, setProgress] = useState(0);
+  const [hint, setHint] = useState(false);
   const frame = useRef(0);
   const finished = useRef(false);
+  const pressing = useRef(false);
+  const hintTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const hintId = useId();
 
   function start() {
     finished.current = false;
+    pressing.current = true;
+    setHint(false);
     const t0 = performance.now();
     const step = (t: number) => {
       const p = Math.min(1, (t - t0) / duration);
@@ -152,6 +158,7 @@ export function HoldButton({ onComplete, children, duration = 1200, className = 
       if (p < 1) frame.current = requestAnimationFrame(step);
       else {
         finished.current = true;
+        pressing.current = false;
         onComplete();
       }
     };
@@ -160,36 +167,48 @@ export function HoldButton({ onComplete, children, duration = 1200, className = 
   }
 
   function cancel() {
+    if (!pressing.current) return;
+    pressing.current = false;
     cancelAnimationFrame(frame.current);
-    if (!finished.current) setProgress(0);
+    if (finished.current) return;
+    setProgress(0);
+    setHint(true);
+    clearTimeout(hintTimer.current);
+    hintTimer.current = setTimeout(() => setHint(false), 1800);
   }
 
   const holding = progress > 0 && progress < 1;
   return (
-    <button
-      type="button"
-      onPointerDown={start}
-      onPointerUp={cancel}
-      onPointerLeave={cancel}
-      onKeyDown={(e) => {
-        if ((e.key === " " || e.key === "Enter") && !e.repeat) {
-          e.preventDefault();
-          start();
-        }
-      }}
-      onKeyUp={(e) => {
-        if (e.key === " " || e.key === "Enter") cancel();
-      }}
-      className={`relative inline-flex h-13 select-none items-center justify-center overflow-hidden rounded-full bg-sun px-6 text-[15px] font-semibold text-void shadow-[0_0_0_1px_rgba(255,197,61,0.5),0_12px_34px_-10px_rgba(255,197,61,0.7)] transition active:scale-[0.98] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-2 ${className}`}
-    >
-      <span aria-hidden className="absolute inset-0 origin-left bg-white/45" style={{ transform: `scaleX(${progress})` }} />
-      <span className="relative flex items-center gap-2">
-        <svg viewBox="0 0 20 20" className="size-5 -rotate-90" aria-hidden>
-          <circle cx="10" cy="10" r="7.5" fill="none" stroke="rgba(10,14,28,0.25)" strokeWidth="2.2" />
-          <circle cx="10" cy="10" r="7.5" fill="none" stroke="currentColor" strokeWidth="2.2" strokeDasharray={`${progress * 47.1} 47.1`} strokeLinecap="round" />
-        </svg>
-        {holding ? "Keep holding…" : children}
+    <span className="inline-flex flex-col items-start gap-1.5">
+      <button
+        type="button"
+        aria-describedby={hintId}
+        onPointerDown={start}
+        onPointerUp={cancel}
+        onPointerLeave={cancel}
+        onKeyDown={(e) => {
+          if ((e.key === " " || e.key === "Enter") && !e.repeat) {
+            e.preventDefault();
+            start();
+          }
+        }}
+        onKeyUp={(e) => {
+          if (e.key === " " || e.key === "Enter") cancel();
+        }}
+        className={`relative inline-flex h-13 select-none items-center justify-center overflow-hidden rounded-full bg-sun px-6 text-[15px] font-semibold text-void shadow-[0_0_0_1px_rgba(255,197,61,0.5),0_12px_34px_-10px_rgba(255,197,61,0.7)] transition active:scale-[0.98] ${hint ? "shake" : ""} ${className}`}
+      >
+        <span aria-hidden className="absolute inset-0 origin-left bg-white/45" style={{ transform: `scaleX(${progress})` }} />
+        <span className="relative flex items-center gap-2">
+          <svg viewBox="0 0 20 20" className="size-5 -rotate-90" aria-hidden>
+            <circle cx="10" cy="10" r="7.5" fill="none" stroke="rgba(10,14,28,0.25)" strokeWidth="2.2" />
+            <circle cx="10" cy="10" r="7.5" fill="none" stroke="currentColor" strokeWidth="2.2" strokeDasharray={`${progress * 47.1} 47.1`} strokeLinecap="round" />
+          </svg>
+          {holding ? "Keep holding…" : children}
+        </span>
+      </button>
+      <span id={hintId} role="status" className={`pl-2 text-xs transition-colors ${hint ? "text-sun" : "text-dim"}`}>
+        {hint ? "Hold it for a second. Nothing moved." : "Press and hold for one second"}
       </span>
-    </button>
+    </span>
   );
 }

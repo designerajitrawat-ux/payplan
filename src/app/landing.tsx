@@ -86,7 +86,7 @@ export function MiniVerifier() {
   return (
     <div onMouseMove={trackSpotlight} className="spotlight glass rounded-[28px] p-5 sm:p-7">
       <div className="flex flex-wrap items-center justify-between gap-4">
-        <p className="font-mono text-[11px] uppercase tracking-[0.16em] text-dim">Landing page for Northwind · $1,000</p>
+        <p className="font-mono text-xs uppercase tracking-[0.16em] text-dim">Landing page for Northwind · $1,000</p>
         <motion.button
           type="button"
           onClick={() => setStep(0)}
