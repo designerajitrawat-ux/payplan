@@ -7,15 +7,15 @@ import type { LedgerEntry, MilestoneStatus, Verdict } from "@/lib/types";
 import { NumberTicker, trackSpotlight } from "./motion";
 
 const buttonBase =
-  "inline-flex items-center justify-center gap-2 rounded-full font-semibold transition duration-200 active:scale-[0.97] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-nova disabled:pointer-events-none disabled:opacity-40";
+  "inline-flex items-center justify-center gap-2 rounded-full font-semibold transition duration-200 active:scale-[0.97] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-2 disabled:pointer-events-none disabled:opacity-40";
 
 const buttonVariants = {
-  primary: "sheen bg-star text-void shadow-[0_0_0_1px_rgba(255,255,255,0.4),0_10px_30px_-10px_rgba(185,162,255,0.6)] hover:shadow-[0_0_0_1px_rgba(255,255,255,0.6),0_12px_40px_-8px_rgba(185,162,255,0.8)]",
-  secondary: "border border-white/10 bg-white/[0.04] text-ink hover:border-white/20 hover:bg-white/[0.08]",
+  primary: "sheen bg-brand text-white shadow-[0_0_0_1px_rgba(122,162,255,0.55),0_12px_32px_-10px_rgba(47,94,255,0.95)] hover:bg-[#3d6aff] hover:shadow-[0_0_0_1px_rgba(122,162,255,0.8),0_16px_44px_-8px_rgba(47,94,255,1)]",
+  secondary: "border border-brand-2/30 bg-brand/[0.08] text-ink hover:border-brand-2/50 hover:bg-brand/[0.16]",
   ghost: "text-mute hover:bg-white/5 hover:text-ink",
   danger: "border border-flare/40 bg-flare/5 text-flare hover:bg-flare/10",
-  agent: "sheen bg-nova text-void shadow-[0_10px_30px_-10px_rgba(185,162,255,0.8)] hover:brightness-110",
-  money: "sheen bg-sun text-void shadow-[0_0_0_1px_rgba(255,181,71,0.5),0_12px_34px_-10px_rgba(255,181,71,0.7)] hover:shadow-[0_0_0_1px_rgba(255,181,71,0.8),0_14px_44px_-8px_rgba(255,181,71,0.9)]",
+  agent: "sheen bg-nova text-void shadow-[0_10px_30px_-10px_rgba(167,139,255,0.8)] hover:brightness-110",
+  money: "sheen bg-sun text-void shadow-[0_0_0_1px_rgba(255,197,61,0.5),0_12px_34px_-10px_rgba(255,197,61,0.7)] hover:shadow-[0_0_0_1px_rgba(255,197,61,0.8),0_14px_44px_-8px_rgba(255,197,61,0.9)]",
 };
 
 const buttonSizes = { sm: "h-9 px-3.5 text-[13px]", md: "h-11 px-5 text-sm", lg: "h-13 px-6 text-[15px]" };
@@ -103,8 +103,8 @@ export function MoneyBar({ ledger, amount, labels = true }: { ledger: LedgerEntr
   const t = ledgerTotals(ledger);
   const total = t.authorized || amount;
   const parts = [
-    { key: "Released", value: t.captured, color: "bg-mint", glow: "shadow-[0_0_16px_rgba(79,227,166,0.6)]" },
-    { key: "Held on client's PayPal", value: t.held, color: "bg-[repeating-linear-gradient(135deg,var(--color-ice)_0_4px,rgba(130,184,255,0.35)_4px_8px)]", glow: "" },
+    { key: "Released", value: t.captured, color: "bg-mint", glow: "shadow-[0_0_16px_rgba(34,227,160,0.6)]" },
+    { key: "Held on client's PayPal", value: t.held, color: "bg-[repeating-linear-gradient(135deg,var(--color-ice)_0_4px,rgba(79,200,255,0.35)_4px_8px)]", glow: "" },
     { key: "Returned", value: t.voided, color: "bg-white/25", glow: "" },
   ];
   return (
@@ -145,7 +145,7 @@ export function Field({ label, hint, children }: { label: string; hint?: string;
 }
 
 export const inputClass =
-  "w-full rounded-xl border border-white/10 bg-white/[0.03] px-3.5 py-2.5 text-sm text-ink placeholder:text-dim transition focus:border-nova/60 focus:bg-white/[0.05] focus:outline-none focus:ring-4 focus:ring-nova/15";
+  "w-full rounded-xl border border-brand-2/20 bg-deep/60 px-3.5 py-2.5 text-sm text-ink placeholder:text-dim transition focus:border-brand-2/70 focus:bg-deep/80 focus:outline-none focus:ring-4 focus:ring-brand/25";
 
 export function Toggle({ checked, onChange, label, tone = "nova" }: { checked: boolean; onChange: (v: boolean) => void; label: string; tone?: "nova" | "mint" }) {
   return (
@@ -155,7 +155,7 @@ export function Toggle({ checked, onChange, label, tone = "nova" }: { checked: b
       aria-checked={checked}
       aria-label={label}
       onClick={() => onChange(!checked)}
-      className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors duration-300 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-nova ${checked ? (tone === "nova" ? "bg-nova" : "bg-mint") : "bg-white/12"}`}
+      className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors duration-300 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-2 ${checked ? (tone === "nova" ? "bg-nova" : "bg-mint") : "bg-white/12"}`}
     >
       <span className={`inline-block size-5 rounded-full bg-star shadow transition-transform duration-300 ease-out-expo ${checked ? "translate-x-[22px]" : "translate-x-0.5"}`} />
     </button>
@@ -163,9 +163,9 @@ export function Toggle({ checked, onChange, label, tone = "nova" }: { checked: b
 }
 
 const avatarTones = {
-  freelancer: "from-[#ffc46b] to-[#ff7a66] text-void",
-  client: "from-[#a99bff] to-[#6fd3ff] text-void",
-  agent: "from-[#6fd3ff] to-[#4fe3a6] text-void",
+  freelancer: "from-[#ffc53d] to-[#ff5c7c] text-void",
+  client: "from-[#a78bff] to-[#4fc8ff] text-void",
+  agent: "from-[#4fc8ff] to-[#22e3a0] text-void",
 };
 
 export function Avatar({ name, kind, size = "md" }: { name: string; kind: keyof typeof avatarTones; size?: "sm" | "md" }) {

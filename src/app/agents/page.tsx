@@ -39,7 +39,7 @@ function SpendBar({ amount, limit }: { amount: number; limit: number }) {
       </div>
       <motion.div key={over ? "over" : "ok"} animate={over ? { x: [0, -5, 5, -3, 0] } : { x: 0 }} transition={{ duration: 0.4 }} className="relative mt-2 h-3 rounded-full bg-white/[0.06]">
         <motion.div
-          className={`absolute inset-y-0 left-0 rounded-full ${over ? "bg-flare shadow-[0_0_16px_var(--color-flare)]" : "bg-mint shadow-[0_0_16px_rgba(79,227,176,0.6)]"}`}
+          className={`absolute inset-y-0 left-0 rounded-full ${over ? "bg-flare shadow-[0_0_16px_var(--color-flare)]" : "bg-mint shadow-[0_0_16px_rgba(34,227,160,0.6)]"}`}
           initial={false}
           animate={{ width: `${(amount / scale) * 100}%` }}
           transition={{ type: "spring", bounce: 0.25, duration: 0.6 }}

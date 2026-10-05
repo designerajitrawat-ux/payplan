@@ -56,7 +56,7 @@ function Sidebar() {
   const waiting = milestones.filter((m) => m.status === "awaiting_decision" || m.status === "fix_window" || m.status === "funded").length;
 
   return (
-    <nav aria-label="Main" className="flex flex-col gap-6 border-b border-white/[0.06] bg-deep/70 px-4 py-4 backdrop-blur-xl lg:sticky lg:top-0 lg:h-screen lg:w-64 lg:shrink-0 lg:border-b-0 lg:border-r lg:py-6">
+    <nav aria-label="Main" className="flex flex-col gap-6 border-b border-brand-2/15 bg-deep/80 px-4 py-4 backdrop-blur-xl lg:sticky lg:top-0 lg:h-screen lg:w-64 lg:shrink-0 lg:border-b-0 lg:border-r lg:py-6">
       <div className="flex items-center justify-between gap-3 px-2">
         <Link href="/" aria-label="PayPlan home">
           <Logo />
@@ -74,8 +74,8 @@ function Sidebar() {
                 className={`group relative isolate flex items-center gap-3 whitespace-nowrap rounded-xl px-3 py-2.5 text-sm transition-colors ${active ? "text-ink" : "text-mute hover:text-ink"}`}
               >
                 {active ? (
-                  <motion.span layoutId="nav-active" className="absolute inset-0 -z-10 rounded-xl bg-white/[0.07]" transition={{ type: "spring", bounce: 0.2, duration: 0.5 }}>
-                    <span className="absolute inset-y-2 left-0 hidden w-0.5 rounded-full bg-nova shadow-[0_0_12px_var(--color-nova)] lg:block" />
+                  <motion.span layoutId="nav-active" className="absolute inset-0 -z-10 rounded-xl bg-brand/[0.22] ring-1 ring-inset ring-brand-2/25" transition={{ type: "spring", bounce: 0.2, duration: 0.5 }}>
+                    <span className="absolute inset-y-2 left-0 hidden w-0.5 rounded-full bg-brand-2 shadow-[0_0_12px_var(--color-brand-2)] lg:block" />
                   </motion.span>
                 ) : (
                   <span className="absolute inset-0 -z-10 rounded-xl transition-colors group-hover:bg-white/[0.04]" />
@@ -91,7 +91,7 @@ function Sidebar() {
                 ) : (
                   item.label
                 )}
-                {item.href === "/dashboard" && waiting > 0 ? <span className="ml-auto rounded-full bg-nova/15 px-1.5 text-[11px] font-semibold text-nova">{waiting}</span> : null}
+                {item.href === "/dashboard" && waiting > 0 ? <span className="ml-auto rounded-full bg-brand px-1.5 text-[11px] font-semibold text-white">{waiting}</span> : null}
               </Link>
             </li>
           );

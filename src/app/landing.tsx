@@ -10,13 +10,13 @@ export function MagneticLink({ href, children, variant = "primary" }: { href: st
   const magnetic = useMagnetic<HTMLAnchorElement>(0.22);
   const style =
     variant === "primary"
-      ? "sheen bg-star text-void shadow-[0_0_0_1px_rgba(255,255,255,0.4),0_14px_40px_-12px_rgba(185,162,255,0.8)]"
-      : "border border-white/12 bg-white/[0.04] text-ink hover:bg-white/[0.08]";
+      ? "sheen bg-brand text-white shadow-[0_0_0_1px_rgba(122,162,255,0.55),0_12px_32px_-10px_rgba(47,94,255,0.95)] hover:bg-[#3d6aff] hover:shadow-[0_0_0_1px_rgba(122,162,255,0.8),0_16px_44px_-8px_rgba(47,94,255,1)]"
+      : "border border-brand-2/30 bg-brand/[0.08] text-ink hover:bg-brand/[0.16]";
   return (
     <Link
       href={href}
       {...magnetic}
-      className={`group inline-flex h-13 items-center gap-2 rounded-full px-6 text-[15px] font-semibold transition-[transform,background-color,box-shadow] duration-300 ease-out-expo focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-nova ${style}`}
+      className={`group inline-flex h-13 items-center gap-2 rounded-full px-6 text-[15px] font-semibold transition-[transform,background-color,box-shadow] duration-300 ease-out-expo focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-2 ${style}`}
     >
       {children}
       <Arrow />
@@ -92,11 +92,11 @@ export function MiniVerifier() {
           onClick={() => setStep(0)}
           disabled={running}
           whileTap={{ scale: 0.96 }}
-          className="sheen inline-flex h-11 items-center gap-2 rounded-full bg-star px-5 text-sm font-semibold text-void disabled:opacity-60"
+          className="sheen inline-flex h-11 items-center gap-2 rounded-full bg-brand px-5 text-sm font-semibold text-white shadow-[0_10px_28px_-10px_rgba(47,94,255,0.95)] disabled:opacity-60"
         >
           {running ? (
             <>
-              <span className="size-3.5 animate-spin rounded-full border-2 border-void/25 border-t-void" aria-hidden />
+              <span className="size-3.5 animate-spin rounded-full border-2 border-white/30 border-t-white" aria-hidden />
               Checking…
             </>
           ) : step >= demoChecks.length ? (

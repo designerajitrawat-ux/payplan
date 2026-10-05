@@ -43,7 +43,7 @@ function ApprovalChoice({ value, onChange, locked }: { value: ApprovalMode; onCh
               <motion.span
                 layoutId="approval-choice"
                 transition={{ type: "spring", bounce: 0.2, duration: 0.5 }}
-                className={`absolute inset-0 -z-10 rounded-2xl border ${o.mode === "agent" ? "border-nova/50 bg-nova/[0.08] shadow-[0_0_30px_-12px_rgba(185,162,255,0.7)]" : "border-white/25 bg-white/[0.06]"}`}
+                className={`absolute inset-0 -z-10 rounded-2xl border ${o.mode === "agent" ? "border-nova/50 bg-nova/[0.08] shadow-[0_0_30px_-12px_rgba(167,139,255,0.7)]" : "border-white/25 bg-white/[0.06]"}`}
               />
             ) : null}
             <span className="flex items-center justify-between gap-2">

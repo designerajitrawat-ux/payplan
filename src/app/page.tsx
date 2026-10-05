@@ -29,7 +29,7 @@ function HeroBackdrop() {
       <svg viewBox="0 0 800 800" className="h-[820px] w-[820px] max-w-none opacity-60">
         <circle cx="400" cy="400" r="380" fill="none" stroke="rgba(255,255,255,0.06)" />
         <circle cx="400" cy="400" r="290" fill="none" stroke="rgba(255,255,255,0.07)" strokeDasharray="2 8" />
-        <circle cx="400" cy="400" r="200" fill="none" stroke="rgba(185,162,255,0.12)" />
+        <circle cx="400" cy="400" r="200" fill="none" stroke="rgba(167,139,255,0.12)" />
         <g className="spin-slower" style={{ transformOrigin: "400px 400px" }}>
           <circle cx="780" cy="400" r="5" fill="var(--color-mint)" />
           <circle cx="20" cy="400" r="3" fill="var(--color-ice)" />

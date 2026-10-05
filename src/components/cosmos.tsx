@@ -33,7 +33,7 @@ export function Starfield() {
       for (const s of stars) {
         const twinkle = reduced ? 1 : 0.6 + 0.4 * Math.sin((t / 1000) * s.s + s.p);
         ctx.globalAlpha = s.a * twinkle;
-        ctx.fillStyle = s.z > 0.85 ? "#DCD6FF" : "#E8ECFF";
+        ctx.fillStyle = s.z > 0.85 ? "#c9d6ff" : "#E8ECFF";
         ctx.beginPath();
         ctx.arc(s.x + eye.x * s.z * 18, s.y + eye.y * s.z * 18, s.r, 0, Math.PI * 2);
         ctx.fill();
@@ -121,27 +121,27 @@ export function OrbitHero() {
     <svg viewBox="0 0 560 560" className="h-auto w-full max-w-[560px]" role="img" aria-label="A $1,000 milestone with five criteria orbiting it; four have passed and money travels from the client to the freelancer">
       <defs>
         <radialGradient id="planet" cx="38%" cy="32%" r="75%">
-          <stop offset="0%" stopColor="#3B3570" />
-          <stop offset="55%" stopColor="#15142B" />
-          <stop offset="100%" stopColor="#07070F" />
+          <stop offset="0%" stopColor="#4b3fd0" />
+          <stop offset="55%" stopColor="#16206e" />
+          <stop offset="100%" stopColor="#050a26" />
         </radialGradient>
         <radialGradient id="halo" r="50%">
-          <stop offset="60%" stopColor="rgba(185,162,255,0)" />
-          <stop offset="78%" stopColor="rgba(185,162,255,0.18)" />
-          <stop offset="100%" stopColor="rgba(185,162,255,0)" />
+          <stop offset="60%" stopColor="rgba(167,139,255,0)" />
+          <stop offset="78%" stopColor="rgba(167,139,255,0.18)" />
+          <stop offset="100%" stopColor="rgba(167,139,255,0)" />
         </radialGradient>
         <linearGradient id="beam" x1="0" y1="0" x2="1" y2="0">
-          <stop offset="0%" stopColor="rgba(185,162,255,0)" />
-          <stop offset="100%" stopColor="rgba(185,162,255,0.28)" />
+          <stop offset="0%" stopColor="rgba(167,139,255,0)" />
+          <stop offset="100%" stopColor="rgba(167,139,255,0.28)" />
         </linearGradient>
         <linearGradient id="tail" x1="0" y1="0" x2="1" y2="0">
-          <stop offset="0%" stopColor="rgba(255,196,107,0)" />
-          <stop offset="100%" stopColor="rgba(255,196,107,0.95)" />
+          <stop offset="0%" stopColor="rgba(255,197,61,0)" />
+          <stop offset="100%" stopColor="rgba(255,197,61,0.95)" />
         </linearGradient>
       </defs>
 
       <circle cx={c} cy={c} r="236" fill="none" stroke="rgba(255,255,255,0.07)" strokeDasharray="2 6" />
-      <path d={arc} fill="none" stroke="rgba(255,196,107,0.22)" strokeWidth="1.2" />
+      <path d={arc} fill="none" stroke="rgba(255,197,61,0.22)" strokeWidth="1.2" />
       <circle cx={c} cy={c} r="150" fill="none" stroke="rgba(255,255,255,0.09)" />
       <circle cx={c} cy={c} r="190" fill="url(#halo)" />
 
@@ -172,11 +172,11 @@ export function OrbitHero() {
       </text>
 
       <g>
-        <circle cx={sx} cy={sy} r="9" fill="#0B0C16" stroke="var(--color-ice)" strokeWidth="1.5" />
+        <circle cx={sx} cy={sy} r="9" fill="#050a26" stroke="var(--color-ice)" strokeWidth="1.5" />
         <text x={sx - 12} y={sy + 28} textAnchor="start" className="fill-mute" fontSize="12">
           Client · USA
         </text>
-        <circle cx={fx} cy={fy} r="9" fill="#0B0C16" stroke="var(--color-mint)" strokeWidth="1.5" />
+        <circle cx={fx} cy={fy} r="9" fill="#050a26" stroke="var(--color-mint)" strokeWidth="1.5" />
         <text x={fx + 12} y={fy + 28} textAnchor="end" className="fill-mute" fontSize="12">
           Freelancer · India
         </text>
@@ -187,7 +187,7 @@ export function OrbitHero() {
       ) : (
         <g>
           <line x1="-34" y1="0" x2="0" y2="0" stroke="url(#tail)" strokeWidth="3" strokeLinecap="round" />
-          <circle r="4.5" fill="#FFE2B0" />
+          <circle r="4.5" fill="#fff1c2" />
           <animateMotion dur="5s" repeatCount="indefinite" rotate="auto" path={arc} keyPoints="0;1;1" keyTimes="0;0.7;1" calcMode="spline" keySplines="0.6 0 0.3 1;0 0 1 1" />
         </g>
       )}
@@ -229,7 +229,7 @@ export function Constellation({ states }: { states: StarState[] }) {
             y1={py}
             x2={x}
             y2={y}
-            stroke={on ? "rgba(185,162,255,0.55)" : "rgba(255,255,255,0.06)"}
+            stroke={on ? "rgba(167,139,255,0.55)" : "rgba(255,255,255,0.06)"}
             strokeWidth="1"
             strokeDasharray={length}
             strokeDashoffset={on || reduced ? 0 : length}
@@ -319,36 +319,36 @@ export function MoneyOrbit({
     <svg viewBox="0 0 720 240" className="h-auto w-full" role="img" aria-label={`${amountLabel} authorized, split into ${segments.length} criteria`}>
       <defs>
         <radialGradient id="mo-client" cx="35%" cy="30%" r="80%">
-          <stop offset="0%" stopColor="#2B4677" />
-          <stop offset="100%" stopColor="#0B1222" />
+          <stop offset="0%" stopColor="#3a66ff" />
+          <stop offset="100%" stopColor="#0a1446" />
         </radialGradient>
         <radialGradient id="mo-free" cx="35%" cy="30%" r="80%">
-          <stop offset="0%" stopColor="#1E5C4D" />
-          <stop offset="100%" stopColor="#0A1A19" />
+          <stop offset="0%" stopColor="#14b583" />
+          <stop offset="100%" stopColor="#05362a" />
         </radialGradient>
         <linearGradient id="mo-tail" x1="0" y1="0" x2="1" y2="0">
-          <stop offset="0%" stopColor="rgba(255,181,71,0)" />
-          <stop offset="100%" stopColor="rgba(255,181,71,0.95)" />
+          <stop offset="0%" stopColor="rgba(255,197,61,0)" />
+          <stop offset="100%" stopColor="rgba(255,197,61,0.95)" />
         </linearGradient>
       </defs>
 
-      <path d={inArc} fill="none" stroke={holding ? "rgba(130,184,255,0.45)" : "rgba(255,255,255,0.1)"} strokeWidth="1.5" strokeDasharray="4 6" />
-      <path d={outArc} fill="none" stroke={releasing ? "rgba(79,227,176,0.5)" : "rgba(255,255,255,0.1)"} strokeWidth="1.5" strokeDasharray="4 6" />
+      <path d={inArc} fill="none" stroke={holding ? "rgba(79,200,255,0.45)" : "rgba(255,255,255,0.1)"} strokeWidth="1.5" strokeDasharray="4 6" />
+      <path d={outArc} fill="none" stroke={releasing ? "rgba(34,227,160,0.5)" : "rgba(255,255,255,0.1)"} strokeWidth="1.5" strokeDasharray="4 6" />
 
       <g>
-        <circle cx="100" cy="120" r="40" fill="url(#mo-client)" stroke="rgba(130,184,255,0.45)" />
+        <circle cx="100" cy="120" r="40" fill="url(#mo-client)" stroke="rgba(79,200,255,0.45)" />
         {agent ? (
           <g className={reduced ? "" : "spin-slow"} style={{ transformOrigin: "100px 120px" }}>
-            <circle cx="100" cy="120" r="58" fill="none" stroke="rgba(185,162,255,0.25)" strokeDasharray="2 5" />
+            <circle cx="100" cy="120" r="58" fill="none" stroke="rgba(167,139,255,0.25)" strokeDasharray="2 5" />
             <circle cx="158" cy="120" r="6" fill="var(--color-nova)" />
           </g>
         ) : null}
       </g>
 
-      <circle cx="620" cy="120" r="40" fill="url(#mo-free)" stroke={releasing ? "rgba(79,227,176,0.7)" : "rgba(79,227,176,0.3)"} />
-      {releasing ? <circle cx="620" cy="120" r="52" fill="none" stroke="rgba(79,227,176,0.25)" className={reduced ? "" : "breathe"} style={{ transformOrigin: "620px 120px" }} /> : null}
+      <circle cx="620" cy="120" r="40" fill="url(#mo-free)" stroke={releasing ? "rgba(34,227,160,0.7)" : "rgba(34,227,160,0.3)"} />
+      {releasing ? <circle cx="620" cy="120" r="52" fill="none" stroke="rgba(34,227,160,0.25)" className={reduced ? "" : "breathe"} style={{ transformOrigin: "620px 120px" }} /> : null}
 
-      <circle cx={cx} cy={cy} r={r + 16} fill="rgba(185,162,255,0.04)" />
+      <circle cx={cx} cy={cy} r={r + 16} fill="rgba(167,139,255,0.04)" />
       <g transform={`rotate(-90 ${cx} ${cy})`}>
         {segments.map((s, i) => (
             <circle
@@ -379,7 +379,7 @@ export function MoneyOrbit({
       {!reduced && releasing ? (
         <g>
           <line x1="-30" y1="0" x2="0" y2="0" stroke="url(#mo-tail)" strokeWidth="3" strokeLinecap="round" />
-          <circle r="5" fill="#FFE0AE" />
+          <circle r="5" fill="#fff1c2" />
           <animateMotion dur="2.6s" repeatCount="indefinite" rotate="auto" path={outArc} keyPoints="0;1;1" keyTimes="0;0.75;1" calcMode="spline" keySplines="0.5 0 0.3 1;0 0 1 1" />
         </g>
       ) : null}

@@ -24,7 +24,7 @@ export function FlowSteps({ status }: { status: MilestoneStatus }) {
           <li key={label} aria-current={state === "current" ? "step" : undefined} className="min-w-0">
             <span
               className={`block h-1 rounded-full transition-colors duration-700 ${
-                state === "done" ? "bg-nova/80" : state === "current" ? "bg-gradient-to-r from-nova to-nova/10 shadow-[0_0_12px_rgba(185,162,255,0.6)]" : "bg-white/[0.08]"
+                state === "done" ? "bg-brand" : state === "current" ? "bg-gradient-to-r from-brand-2 to-brand/10 shadow-[0_0_14px_rgba(122,162,255,0.8)]" : "bg-white/[0.1]"
               }`}
             />
             <span className={`mt-2 block truncate text-[11px] font-medium sm:text-xs ${state === "todo" ? "text-dim" : state === "current" ? "text-ink" : "text-mute"}`}>

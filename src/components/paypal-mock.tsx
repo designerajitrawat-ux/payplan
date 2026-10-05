@@ -38,7 +38,7 @@ export function PayPalMockButton({ amount, payerEmail, agentNote, onApprove }: {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="sheen group flex h-13 w-full items-center justify-center gap-2 rounded-full bg-sun px-5 font-semibold text-void shadow-[0_0_0_1px_rgba(255,181,71,0.5),0_12px_34px_-10px_rgba(255,181,71,0.7)] transition active:scale-[0.98] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-nova"
+        className="sheen group flex h-13 w-full items-center justify-center gap-2 rounded-full bg-sun px-5 font-semibold text-void shadow-[0_0_0_1px_rgba(255,197,61,0.5),0_12px_34px_-10px_rgba(255,197,61,0.7)] transition active:scale-[0.98] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-2"
       >
         <svg viewBox="0 0 20 20" className="size-4" aria-hidden>
           <rect x="4" y="9" width="12" height="8" rx="2" fill="none" stroke="currentColor" strokeWidth="1.8" />
@@ -96,7 +96,7 @@ export function PayPalMockButton({ amount, payerEmail, agentNote, onApprove }: {
                   onClick={approve}
                   disabled={phase !== "idle"}
                   whileTap={{ scale: 0.97 }}
-                  className={`relative flex h-12 w-full items-center justify-center overflow-hidden rounded-full font-semibold transition-colors duration-500 ${phase === "done" ? "bg-mint text-void" : "bg-star text-void hover:brightness-95"}`}
+                  className={`relative flex h-12 w-full items-center justify-center overflow-hidden rounded-full font-semibold transition-colors duration-500 ${phase === "done" ? "bg-mint text-void" : "bg-brand text-white hover:bg-[#3d6aff]"}`}
                 >
                   <AnimatePresence mode="popLayout" initial={false}>
                     <motion.span
@@ -110,7 +110,7 @@ export function PayPalMockButton({ amount, payerEmail, agentNote, onApprove }: {
                       {phase === "idle" ? "Approve hold" : null}
                       {phase === "busy" ? (
                         <>
-                          <span className="size-4 animate-spin rounded-full border-2 border-void/25 border-t-void" aria-hidden />
+                          <span className="size-4 animate-spin rounded-full border-2 border-white/30 border-t-white" aria-hidden />
                           Authorizing…
                         </>
                       ) : null}

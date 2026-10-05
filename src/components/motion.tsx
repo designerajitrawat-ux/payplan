@@ -180,7 +180,7 @@ export function HoldButton({ onComplete, children, duration = 1200, className = 
       onKeyUp={(e) => {
         if (e.key === " " || e.key === "Enter") cancel();
       }}
-      className={`relative inline-flex h-13 select-none items-center justify-center overflow-hidden rounded-full bg-sun px-6 text-[15px] font-semibold text-void shadow-[0_0_0_1px_rgba(255,181,71,0.5),0_12px_34px_-10px_rgba(255,181,71,0.7)] transition active:scale-[0.98] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-nova ${className}`}
+      className={`relative inline-flex h-13 select-none items-center justify-center overflow-hidden rounded-full bg-sun px-6 text-[15px] font-semibold text-void shadow-[0_0_0_1px_rgba(255,197,61,0.5),0_12px_34px_-10px_rgba(255,197,61,0.7)] transition active:scale-[0.98] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-2 ${className}`}
     >
       <span aria-hidden className="absolute inset-0 origin-left bg-white/45" style={{ transform: `scaleX(${progress})` }} />
       <span className="relative flex items-center gap-2">
