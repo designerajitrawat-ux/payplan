@@ -1,5 +1,6 @@
 "use client";
 
+import { motion } from "motion/react";
 import Link from "next/link";
 import { useState } from "react";
 import { DemoGuide } from "@/components/demo-guide";
@@ -36,14 +37,19 @@ function ApprovalChoice({ value, onChange, locked }: { value: ApprovalMode; onCh
             aria-checked={active}
             disabled={locked && !active}
             onClick={() => onChange(o.mode)}
-            className={`relative rounded-2xl border p-4 text-left transition duration-300 disabled:opacity-40 ${
-              active ? (o.mode === "agent" ? "border-nova/50 bg-nova/[0.08] shadow-[0_0_30px_-12px_rgba(185,162,255,0.7)]" : "border-white/25 bg-white/[0.06]") : "border-white/[0.08] bg-white/[0.02] hover:border-white/15"
-            }`}
+            className={`relative isolate rounded-2xl border p-4 text-left transition-colors duration-300 disabled:opacity-40 ${active ? "border-transparent" : "border-white/[0.08] bg-white/[0.02] hover:border-white/15"}`}
           >
+            {active ? (
+              <motion.span
+                layoutId="approval-choice"
+                transition={{ type: "spring", bounce: 0.2, duration: 0.5 }}
+                className={`absolute inset-0 -z-10 rounded-2xl border ${o.mode === "agent" ? "border-nova/50 bg-nova/[0.08] shadow-[0_0_30px_-12px_rgba(185,162,255,0.7)]" : "border-white/25 bg-white/[0.06]"}`}
+              />
+            ) : null}
             <span className="flex items-center justify-between gap-2">
               <span className="font-medium text-ink">{o.title}</span>
-              <span className={`grid size-5 shrink-0 place-items-center rounded-full border ${active ? "border-transparent bg-star" : "border-white/20"}`}>
-                {active ? <span className="size-2 rounded-full bg-void" /> : null}
+              <span className={`grid size-5 shrink-0 place-items-center rounded-full border transition-colors ${active ? "border-transparent bg-star" : "border-white/20"}`}>
+                {active ? <motion.span initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: "spring", bounce: 0.5, duration: 0.4 }} className="size-2 rounded-full bg-void" /> : null}
               </span>
             </span>
             <span className="mt-2 block text-[13px] leading-relaxed text-mute">{o.body}</span>

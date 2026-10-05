@@ -1,5 +1,6 @@
 "use client";
 
+import { AnimatePresence, motion } from "motion/react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
 import { DemoGuide } from "@/components/demo-guide";
@@ -8,7 +9,6 @@ import { Arrow, Button, Chip, Eyebrow, Field, Panel, RoleChip, Toggle, inputClas
 import { genericCriterion, suggestCriteria } from "@/lib/criteria-presets";
 import { money } from "@/lib/format";
 import { createMilestone } from "@/lib/store";
-import { stagger } from "@/lib/style";
 import type { Criterion, EvidenceType } from "@/lib/types";
 
 type Draft = Omit<Criterion, "id"> & { key: number };
@@ -175,54 +175,63 @@ export function SpecBuilder() {
               <p className="mt-5 rounded-2xl border border-dashed border-white/10 p-8 text-center text-sm text-dim">No criteria yet. Let the AI draft them from the brief, or add one yourself.</p>
             ) : (
               <ul className="mt-5 space-y-3">
-                {criteria.map((c, i) => (
-                  <li key={c.key} className="rise rounded-2xl border border-white/[0.07] bg-white/[0.02] p-4" style={stagger(i)}>
-                    <div className="flex items-start gap-3">
-                      <span className={`mt-2.5 size-2 shrink-0 rounded-full ${segmentShades[i % segmentShades.length]}`} />
-                      <div className="min-w-0 flex-1 space-y-3">
-                        <input className={inputClass} aria-label={`Criterion ${i + 1} title`} value={c.title} onChange={(e) => change(c.key, { title: e.target.value })} placeholder="What must be true?" />
-                        <div className="flex flex-wrap items-center gap-x-4 gap-y-3 text-[13px]">
-                          <label className="flex items-center gap-2">
-                            <span className="whitespace-nowrap text-dim">Evidence</span>
-                            <select className={`${inputClass} w-auto py-1.5`} value={c.evidence} onChange={(e) => change(c.key, { evidence: e.target.value as EvidenceType })}>
-                              {Object.entries(evidenceLabels).map(([value, label]) => (
-                                <option key={value} value={value}>
-                                  {label}
-                                </option>
-                              ))}
-                            </select>
-                          </label>
-                          <label className="flex items-center gap-2">
-                            <span className="whitespace-nowrap text-dim">Checked by</span>
-                            <select className={`${inputClass} w-auto py-1.5`} value={c.check} onChange={(e) => change(c.key, { check: e.target.value as Draft["check"] })}>
-                              <option value="automatic">Automatic test</option>
-                              <option value="ai">AI rubric</option>
-                            </select>
-                          </label>
-                          <label className="flex items-center gap-2">
-                            <span className="whitespace-nowrap text-dim">Weight</span>
-                            <input className={`${inputClass} w-20 py-1.5`} type="number" min={0} max={100} value={c.weight} onChange={(e) => change(c.key, { weight: Number(e.target.value) })} />
-                            <span className="text-dim">%</span>
-                          </label>
-                          <span className="flex items-center gap-2">
-                            <Toggle checked={c.mustPass} onChange={(v) => change(c.key, { mustPass: v })} label={`Criterion ${i + 1} must pass`} tone="mint" />
-                            <span className="text-mute">Must pass</span>
-                          </span>
+                <AnimatePresence initial={false}>
+                  {criteria.map((c, i) => (
+                    <motion.li
+                      key={c.key}
+                      layout
+                      initial={{ opacity: 0, y: 16, filter: "blur(6px)" }}
+                      animate={{ opacity: 1, y: 0, filter: "blur(0px)", transition: { type: "spring", bounce: 0.2, duration: 0.6, delay: i * 0.07 } }}
+                      exit={{ opacity: 0, x: -24, transition: { duration: 0.2 } }}
+                      className="rounded-2xl border border-white/[0.07] bg-white/[0.02] p-4"
+                    >
+                      <div className="flex items-start gap-3">
+                        <span className={`mt-2.5 size-2 shrink-0 rounded-full ${segmentShades[i % segmentShades.length]}`} />
+                        <div className="min-w-0 flex-1 space-y-3">
+                          <input className={inputClass} aria-label={`Criterion ${i + 1} title`} value={c.title} onChange={(e) => change(c.key, { title: e.target.value })} placeholder="What must be true?" />
+                          <div className="flex flex-wrap items-center gap-x-4 gap-y-3 text-[13px]">
+                            <label className="flex items-center gap-2">
+                              <span className="whitespace-nowrap text-dim">Evidence</span>
+                              <select className={`${inputClass} w-auto py-1.5`} value={c.evidence} onChange={(e) => change(c.key, { evidence: e.target.value as EvidenceType })}>
+                                {Object.entries(evidenceLabels).map(([value, label]) => (
+                                  <option key={value} value={value}>
+                                    {label}
+                                  </option>
+                                ))}
+                              </select>
+                            </label>
+                            <label className="flex items-center gap-2">
+                              <span className="whitespace-nowrap text-dim">Checked by</span>
+                              <select className={`${inputClass} w-auto py-1.5`} value={c.check} onChange={(e) => change(c.key, { check: e.target.value as Draft["check"] })}>
+                                <option value="automatic">Automatic test</option>
+                                <option value="ai">AI rubric</option>
+                              </select>
+                            </label>
+                            <label className="flex items-center gap-2">
+                              <span className="whitespace-nowrap text-dim">Weight</span>
+                              <input className={`${inputClass} w-20 py-1.5`} type="number" min={0} max={100} value={c.weight} onChange={(e) => change(c.key, { weight: Number(e.target.value) })} />
+                              <span className="text-dim">%</span>
+                            </label>
+                            <span className="flex items-center gap-2">
+                              <Toggle checked={c.mustPass} onChange={(v) => change(c.key, { mustPass: v })} label={`Criterion ${i + 1} must pass`} tone="mint" />
+                              <span className="text-mute">Must pass</span>
+                            </span>
+                          </div>
                         </div>
+                        <button
+                          type="button"
+                          onClick={() => setCriteria((list) => list.filter((x) => x.key !== c.key))}
+                          className="rounded-lg p-2 text-dim transition hover:bg-flare/10 hover:text-flare"
+                          aria-label={`Remove criterion ${i + 1}`}
+                        >
+                          <svg viewBox="0 0 16 16" className="size-4" aria-hidden>
+                            <path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+                          </svg>
+                        </button>
                       </div>
-                      <button
-                        type="button"
-                        onClick={() => setCriteria((list) => list.filter((x) => x.key !== c.key))}
-                        className="rounded-lg p-2 text-dim transition hover:bg-flare/10 hover:text-flare"
-                        aria-label={`Remove criterion ${i + 1}`}
-                      >
-                        <svg viewBox="0 0 16 16" className="size-4" aria-hidden>
-                          <path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
-                        </svg>
-                      </button>
-                    </div>
-                  </li>
-                ))}
+                    </motion.li>
+                  ))}
+                </AnimatePresence>
               </ul>
             )}
             <Button className="mt-4" variant="ghost" size="sm" onClick={() => setCriteria((list) => [...list, { ...genericCriterion(""), key: nextKey++ }])}>

@@ -1,5 +1,6 @@
 "use client";
 
+import { motion } from "motion/react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { DemoGuide } from "@/components/demo-guide";
@@ -24,12 +25,17 @@ function CheckList({ checks, shown }: { checks: AgentCheck[]; shown: number }) {
         const visible = i < shown;
         const thinking = i === shown;
         return (
-          <li key={c.label} className={`flex items-center gap-3 rounded-2xl border px-4 py-3 transition-all duration-500 ${visible ? (c.ok ? "border-mint/20 bg-mint/[0.04]" : "border-flare/30 bg-flare/[0.06]") : "border-white/[0.06] bg-white/[0.02]"} ${thinking ? "beam" : ""}`}>
+          <motion.li
+            key={c.label}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ type: "spring", bounce: 0.2, duration: 0.5, delay: i * 0.06 }}
+            className={`flex items-center gap-3 rounded-2xl border px-4 py-3 transition-colors duration-500 ${visible ? (c.ok ? "border-mint/20 bg-mint/[0.04]" : "border-flare/30 bg-flare/[0.06]") : "border-white/[0.06] bg-white/[0.02]"} ${thinking ? "beam" : ""}`}>
             <span className={`grid size-6 shrink-0 place-items-center rounded-full ${visible ? (c.ok ? "bg-mint text-void" : "bg-flare text-void") : "border border-white/15"}`}>
               {visible ? (
                 c.ok ? (
                   <svg viewBox="0 0 16 16" className="size-3.5" aria-hidden>
-                    <path d="M3 8.5l3 3 7-7" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" />
+                    <motion.path d="M3 8.5l3 3 7-7" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" initial={{ pathLength: 0 }} animate={{ pathLength: 1 }} transition={{ duration: 0.35 }} />
                   </svg>
                 ) : (
                   <svg viewBox="0 0 16 16" className="size-3" aria-hidden>
@@ -45,7 +51,7 @@ function CheckList({ checks, shown }: { checks: AgentCheck[]; shown: number }) {
               <span className={`block text-xs transition-opacity duration-500 ${visible ? "text-mute opacity-100" : "opacity-0"}`}>{c.detail}</span>
             </span>
             <span className={`font-mono text-[11px] ${visible ? (c.ok ? "text-mint" : "text-flare") : "text-transparent"}`}>{c.ok ? "GO" : "NO-GO"}</span>
-          </li>
+          </motion.li>
         );
       })}
     </ul>

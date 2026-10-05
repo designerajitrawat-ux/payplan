@@ -1,11 +1,17 @@
-import { stagger } from "@/lib/style";
-import { HeroVisual, MagneticLink, MiniVerifier } from "./landing";
+import { MagneticLink, MiniVerifier } from "./landing";
+import { Bento, InView, Marquee, ProductWindow, StoryScroll, WordReveal } from "./landing-motion";
 
-const steps = [
-  { title: "Agree on done", body: "Freelancer and client list the criteria and a weight for each. The spec is frozen and hashed." },
-  { title: "Lock on PayPal", body: "The client approves an authorization hold. Nothing is charged, and PayPlan never holds the money." },
-  { title: "AI checks the work", body: "Automatic tests and an AI rubric check every criterion and attach evidence both sides can see." },
-  { title: "Release what passed", body: "PayPal captures exactly the share that passed. The rest waits for a fix or goes back." },
+const platform = [
+  "Orders v2 · AUTHORIZE",
+  "Payments v2 · partial capture",
+  "Void",
+  "Reauthorize",
+  "Payouts",
+  "Disputes · evidence",
+  "Webhooks",
+  "MCP agent tools",
+  "AI rubric",
+  "Headless browser checks",
 ];
 
 const paypalParts = [
@@ -17,153 +23,128 @@ const paypalParts = [
   { api: "Webhooks", use: "Moves each milestone when PayPal confirms" },
 ];
 
-const rules = [
-  "Releases only work the AI verified",
-  "Stays under its spending limit per milestone",
-  "Hands anything uncertain back to the person",
-  "Can never open or close an appeal",
-];
+function HeroBackdrop() {
+  return (
+    <div aria-hidden className="pointer-events-none absolute inset-x-0 -top-32 flex justify-center [mask-image:radial-gradient(closest-side,black,transparent)]">
+      <svg viewBox="0 0 800 800" className="h-[820px] w-[820px] max-w-none opacity-60">
+        <circle cx="400" cy="400" r="380" fill="none" stroke="rgba(255,255,255,0.06)" />
+        <circle cx="400" cy="400" r="290" fill="none" stroke="rgba(255,255,255,0.07)" strokeDasharray="2 8" />
+        <circle cx="400" cy="400" r="200" fill="none" stroke="rgba(185,162,255,0.12)" />
+        <g className="spin-slower" style={{ transformOrigin: "400px 400px" }}>
+          <circle cx="780" cy="400" r="5" fill="var(--color-mint)" />
+          <circle cx="20" cy="400" r="3" fill="var(--color-ice)" />
+        </g>
+        <g className="spin-slow" style={{ transformOrigin: "400px 400px", animationDuration: "24s" }}>
+          <circle cx="400" cy="110" r="4" fill="var(--color-sun)" />
+        </g>
+        <g className="spin-slow" style={{ transformOrigin: "400px 400px", animationDuration: "40s", animationDirection: "reverse" }}>
+          <circle cx="600" cy="400" r="3.5" fill="var(--color-nova)" />
+        </g>
+      </svg>
+    </div>
+  );
+}
 
 export default function Home() {
   return (
     <div className="overflow-x-clip">
-      <section className="mx-auto grid max-w-7xl items-center gap-12 px-4 pb-20 pt-14 sm:px-6 lg:grid-cols-[1.05fr_1fr] lg:pt-20">
-        <div className="min-w-0">
-          <p className="rise inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5 text-xs text-mute" style={stagger(0)}>
-            <span className="size-1.5 rounded-full bg-mint glow-dot" />
-            Milestone payments on PayPal, checked by AI
-          </p>
-          <h1 className="rise mt-6 font-display text-5xl font-semibold leading-[0.98] tracking-tight text-balance font-stretch-expanded sm:text-6xl xl:text-7xl" style={stagger(1)}>
-            <span className="text-gradient">Paid as agreed.</span>
-            <br />
-            <span className="text-mute">Criterion by criterion.</span>
+      <section className="relative mx-auto max-w-5xl px-4 pb-16 pt-20 text-center sm:px-6 sm:pt-28">
+        <HeroBackdrop />
+        <div className="relative">
+          <InView>
+            <p className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-3.5 py-1.5 text-xs text-mute backdrop-blur">
+              <span className="size-1.5 rounded-full bg-mint glow-dot" />
+              Milestone payments on PayPal, checked by AI
+            </p>
+          </InView>
+          <h1 className="mx-auto mt-7 max-w-4xl font-display text-5xl font-semibold leading-[0.95] tracking-[-0.04em] font-stretch-expanded sm:text-7xl lg:text-[80px]">
+            <WordReveal text="Paid as agreed." className="block" wordClassName="text-gradient pb-[0.08em]" delay={0.05} />
+            <WordReveal text="Criterion by criterion." className="block text-mute" delay={0.2} />
           </h1>
-          <p className="rise mt-6 max-w-xl text-lg leading-relaxed text-mute" style={stagger(2)}>
-            The client locks each milestone on their own PayPal. An AI checker tests the delivered work against what you both agreed, and only the share that passed is released.
-          </p>
-          <div className="rise mt-9 flex flex-wrap gap-3" style={stagger(3)}>
-            <MagneticLink href="/new?demo=1">Start the walkthrough</MagneticLink>
-            <MagneticLink href="/dashboard" variant="secondary">
-              Open the app
-            </MagneticLink>
-          </div>
-          <dl className="rise mt-12 grid max-w-lg grid-cols-3 gap-6 border-t border-white/[0.08] pt-6" style={stagger(4)}>
-            <div>
-              <dt className="text-xs text-dim">Money held by PayPlan</dt>
-              <dd className="mt-1 font-sans text-2xl font-semibold text-ink font-stretch-semi-expanded">$0</dd>
+          <InView delay={0.35}>
+            <p className="mx-auto mt-7 max-w-xl text-lg leading-relaxed text-mute">
+              The client locks each milestone on their own PayPal. An AI checker tests the work against what you both agreed, and only the share that passed is released.
+            </p>
+          </InView>
+          <InView delay={0.45}>
+            <div className="mt-9 flex flex-wrap justify-center gap-3">
+              <MagneticLink href="/new?demo=1">Start the walkthrough</MagneticLink>
+              <MagneticLink href="/dashboard" variant="secondary">
+                Open the app
+              </MagneticLink>
             </div>
-            <div>
-              <dt className="text-xs text-dim">Steps to get paid</dt>
-              <dd className="mt-1 font-display text-2xl font-semibold text-ink">4</dd>
-            </div>
-            <div>
-              <dt className="text-xs text-dim">Silent clients</dt>
-              <dd className="mt-1 font-display text-2xl font-semibold text-ink">Can&apos;t stall</dd>
-            </div>
-          </dl>
-        </div>
-        <div className="rise" style={stagger(2)}>
-          <HeroVisual />
+            <p className="mt-5 text-xs text-dim">Prototype with dummy data · about two minutes · you play both sides</p>
+          </InView>
         </div>
       </section>
 
-      <section className="mx-auto grid max-w-7xl gap-10 px-4 py-16 sm:px-6 lg:grid-cols-[0.9fr_1.1fr] lg:items-center">
-        <div>
-          <p className="font-mono text-[11px] uppercase tracking-[0.16em] text-nova">Try it</p>
-          <h2 className="mt-3 font-display text-3xl font-semibold tracking-tight text-balance font-stretch-semi-expanded sm:text-4xl">Watch money unlock as each check passes.</h2>
-          <p className="mt-4 max-w-md leading-relaxed text-mute">
-            Every criterion carries its share of the payment. When the AI confirms it with evidence, that share can be captured. A failed check holds back only its own part.
-          </p>
+      <ProductWindow />
+
+      <section className="mx-auto mt-20 max-w-6xl px-4 sm:px-6">
+        <p className="text-center text-xs text-dim">Every money move is a real platform call</p>
+        <div className="mt-4">
+          <Marquee items={platform} />
         </div>
-        <MiniVerifier />
       </section>
 
-      <section id="how" className="mx-auto max-w-7xl scroll-mt-24 px-4 py-16 sm:px-6">
-        <p className="font-mono text-[11px] uppercase tracking-[0.16em] text-nova">How it works</p>
-        <h2 className="mt-3 max-w-2xl font-display text-3xl font-semibold tracking-tight text-balance font-stretch-semi-expanded sm:text-4xl">From a handshake to a payout, in four moves.</h2>
-        <ol className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {steps.map((s, i) => (
-            <li key={s.title} className="glass relative overflow-hidden rounded-3xl p-6">
-              <span className="font-mono text-xs text-dim">{String(i + 1).padStart(2, "0")}</span>
-              <h3 className="mt-6 font-display text-xl font-semibold text-ink">{s.title}</h3>
-              <p className="mt-2 text-sm leading-relaxed text-mute">{s.body}</p>
-              <span aria-hidden className="absolute -right-10 -top-10 size-28 rounded-full border border-white/[0.06]" />
-              <span aria-hidden className="absolute -right-4 -top-4 size-16 rounded-full border border-white/[0.06]" />
-            </li>
-          ))}
-        </ol>
+      <section id="how" className="scroll-mt-20 pt-28">
+        <InView className="mx-auto max-w-3xl px-4 text-center sm:px-6">
+          <p className="font-mono text-[11px] uppercase tracking-[0.16em] text-nova">How it works</p>
+          <h2 className="mt-3 font-display text-4xl font-semibold tracking-[-0.03em] text-balance font-stretch-semi-expanded sm:text-5xl">From a handshake to a payout.</h2>
+          <p className="mx-auto mt-4 max-w-lg text-mute">Scroll through one $1,000 milestone. The orbit is the PayPal hold, split into the five things that were agreed.</p>
+        </InView>
+        <div className="mt-16 pb-12">
+          <StoryScroll />
+        </div>
       </section>
 
-      <section id="agents" className="mx-auto grid max-w-7xl scroll-mt-24 gap-10 px-4 py-16 sm:px-6 lg:grid-cols-2 lg:items-center">
-        <div>
-          <p className="font-mono text-[11px] uppercase tracking-[0.16em] text-nova">Agent ready</p>
-          <h2 className="mt-3 font-display text-3xl font-semibold tracking-tight text-balance font-stretch-semi-expanded sm:text-4xl">Let your AI agent pay for work that passed.</h2>
-          <p className="mt-4 max-w-md leading-relaxed text-mute">
-            A client can hand releases to their own agent. It reads the signed report, checks its mandate, and captures the verified share on PayPal. Anything outside its limits goes back to the person.
-          </p>
-          <ul className="mt-6 space-y-3">
-            {rules.map((r) => (
-              <li key={r} className="flex items-center gap-3 text-sm text-ink">
-                <span className="grid size-5 place-items-center rounded-full bg-nova/15 text-nova">
-                  <svg viewBox="0 0 16 16" className="size-3" aria-hidden>
-                    <path d="M3 8.5l3 3 7-7" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
-                  </svg>
-                </span>
-                {r}
+      <section id="try" className="mx-auto grid max-w-7xl scroll-mt-20 gap-10 px-4 py-24 sm:px-6 lg:grid-cols-[0.9fr_1.1fr] lg:items-center">
+        <InView>
+          <p className="font-mono text-[11px] uppercase tracking-[0.16em] text-nova">Try the checker</p>
+          <h2 className="mt-3 font-display text-4xl font-semibold tracking-[-0.03em] text-balance font-stretch-semi-expanded">Watch money unlock as each check passes.</h2>
+          <p className="mt-4 max-w-md leading-relaxed text-mute">Every criterion carries its share of the payment. When the AI confirms it with evidence, that share can be captured. A failed check holds back only its own part.</p>
+        </InView>
+        <InView delay={0.1}>
+          <MiniVerifier />
+        </InView>
+      </section>
+
+      <section className="pb-24">
+        <InView className="mx-auto mb-10 max-w-7xl px-4 sm:px-6">
+          <p className="font-mono text-[11px] uppercase tracking-[0.16em] text-nova">Details that matter</p>
+          <h2 className="mt-3 max-w-2xl font-display text-4xl font-semibold tracking-[-0.03em] text-balance font-stretch-semi-expanded">Built so nobody has to trust anybody.</h2>
+        </InView>
+        <Bento />
+      </section>
+
+      <section className="mx-auto max-w-7xl px-4 pb-24 sm:px-6">
+        <InView>
+          <p className="font-mono text-[11px] uppercase tracking-[0.16em] text-nova">Built on the PayPal platform</p>
+          <h2 className="mt-3 max-w-2xl font-display text-4xl font-semibold tracking-[-0.03em] text-balance font-stretch-semi-expanded">Every money move is a real PayPal call.</h2>
+        </InView>
+        <InView delay={0.1}>
+          <ul className="mt-10 grid gap-px overflow-hidden rounded-[28px] border border-white/[0.08] bg-white/[0.06] sm:grid-cols-2 lg:grid-cols-3">
+            {paypalParts.map((p) => (
+              <li key={p.api} className="bg-void/85 p-6 transition-colors duration-300 hover:bg-panel/85">
+                <p className="font-mono text-xs text-sun">{p.api}</p>
+                <p className="mt-2 text-sm text-mute">{p.use}</p>
               </li>
             ))}
           </ul>
-        </div>
-        <div className="glass rounded-3xl p-6 sm:p-8">
-          <div className="flex items-center justify-between gap-3">
-            <p className="flex items-center gap-2 font-medium text-ink">
-              <span className="grid size-8 place-items-center rounded-full bg-gradient-to-br from-nova to-ice text-[11px] font-bold text-void">AI</span>
-              Northwind buying agent
-            </p>
-            <span className="rounded-full bg-mint/10 px-2.5 py-1 text-xs font-medium text-mint ring-1 ring-inset ring-mint/25">Active</span>
-          </div>
-          <dl className="mt-6 grid grid-cols-2 gap-4 text-sm">
-            <div className="rounded-2xl bg-white/[0.03] p-4">
-              <dt className="text-xs text-dim">Limit per milestone</dt>
-              <dd className="mt-1 font-sans text-2xl font-semibold text-ink font-stretch-semi-expanded">$1,000</dd>
-            </div>
-            <div className="rounded-2xl bg-white/[0.03] p-4">
-              <dt className="text-xs text-dim">Minimum AI confidence</dt>
-              <dd className="mt-1 font-display text-2xl font-semibold text-ink">85%</dd>
-            </div>
-          </dl>
-          <pre className="mt-6 overflow-x-auto rounded-2xl border border-white/[0.06] bg-void/60 p-4 font-mono text-xs leading-relaxed text-mute">
-            <span className="text-dim">{"// tool call from the agent, over MCP"}</span>
-            {"\n"}
-            <span className="text-nova">release_verified</span>({"{"} milestone: <span className="text-sun">&quot;m-1051&quot;</span> {"}"}){"\n"}
-            <span className="text-dim">{"→ "}</span>
-            <span className="text-mint">captured $800.00</span> <span className="text-dim">· 4 of 5 passed · within limit</span>
-          </pre>
-        </div>
+        </InView>
       </section>
 
-      <section className="mx-auto max-w-7xl px-4 py-16 sm:px-6">
-        <p className="font-mono text-[11px] uppercase tracking-[0.16em] text-nova">Built on the PayPal platform</p>
-        <h2 className="mt-3 max-w-2xl font-display text-3xl font-semibold tracking-tight text-balance font-stretch-semi-expanded sm:text-4xl">Every money move is a real PayPal call.</h2>
-        <ul className="mt-10 grid gap-px overflow-hidden rounded-3xl border border-white/[0.08] bg-white/[0.06] sm:grid-cols-2 lg:grid-cols-3">
-          {paypalParts.map((p) => (
-            <li key={p.api} className="bg-void/80 p-6 transition-colors hover:bg-panel/80">
-              <p className="font-mono text-xs text-sun">{p.api}</p>
-              <p className="mt-2 text-sm text-mute">{p.use}</p>
-            </li>
-          ))}
-        </ul>
-      </section>
-
-      <section className="mx-auto max-w-7xl px-4 pb-24 pt-8 sm:px-6">
-        <div className="glass relative overflow-hidden rounded-[2rem] px-6 py-14 text-center sm:px-12">
-          <span aria-hidden className="absolute left-1/2 top-full size-[520px] -translate-x-1/2 -translate-y-1/3 rounded-full bg-nova/20 blur-3xl" />
-          <h2 className="relative mx-auto max-w-2xl font-display text-3xl font-semibold tracking-tight text-balance font-stretch-semi-expanded sm:text-5xl">See one milestone from first brief to final payout.</h2>
-          <p className="relative mx-auto mt-4 max-w-lg text-mute">Seven steps, about two minutes. You play both the freelancer and the client.</p>
-          <div className="relative mt-8 flex justify-center">
-            <MagneticLink href="/new?demo=1">Start the walkthrough</MagneticLink>
+      <section className="mx-auto max-w-7xl px-4 pb-24 sm:px-6">
+        <InView>
+          <div className="glass relative overflow-hidden rounded-[36px] px-6 py-16 text-center sm:px-12">
+            <span aria-hidden className="absolute left-1/2 top-full size-[560px] -translate-x-1/2 -translate-y-1/3 rounded-full bg-nova/25 blur-3xl" />
+            <h2 className="relative mx-auto max-w-2xl font-display text-4xl font-semibold tracking-[-0.03em] text-balance font-stretch-semi-expanded sm:text-6xl">See one milestone from brief to payout.</h2>
+            <p className="relative mx-auto mt-4 max-w-lg text-mute">Seven steps, about two minutes. You play both the freelancer and the client.</p>
+            <div className="relative mt-9 flex justify-center">
+              <MagneticLink href="/new?demo=1">Start the walkthrough</MagneticLink>
+            </div>
           </div>
-        </div>
+        </InView>
       </section>
     </div>
   );

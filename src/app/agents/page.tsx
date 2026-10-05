@@ -1,5 +1,6 @@
 "use client";
 
+import { AnimatePresence, motion } from "motion/react";
 import Link from "next/link";
 import type { CSSProperties } from "react";
 import { DemoGuide } from "@/components/demo-guide";
@@ -23,6 +24,38 @@ const tools = [
 // A sample report for the live preview: the Northwind landing page, 4 of 5 criteria passed.
 const sampleCriteria: Criterion[] = landingPagePreset.map((c, i) => ({ ...c, id: `sample-${i}` }));
 const sampleResults = sampleCriteria.map((c) => ({ criterionId: c.id, ...c.demo.first }));
+
+/** How much of the agent's limit this release uses; over the dashed cap line it turns red and shakes. */
+function SpendBar({ amount, limit }: { amount: number; limit: number }) {
+  const scale = Math.max(limit, amount) * 1.2;
+  const over = amount > limit;
+  return (
+    <div className="mt-5">
+      <div className="flex justify-between text-[11px] text-dim">
+        <span>
+          This release <span className={over ? "text-flare" : "text-ink"}>{money(amount)}</span>
+        </span>
+        <span>Limit {money(limit)}</span>
+      </div>
+      <motion.div key={over ? "over" : "ok"} animate={over ? { x: [0, -5, 5, -3, 0] } : { x: 0 }} transition={{ duration: 0.4 }} className="relative mt-2 h-3 rounded-full bg-white/[0.06]">
+        <motion.div
+          className={`absolute inset-y-0 left-0 rounded-full ${over ? "bg-flare shadow-[0_0_16px_var(--color-flare)]" : "bg-mint shadow-[0_0_16px_rgba(79,227,176,0.6)]"}`}
+          initial={false}
+          animate={{ width: `${(amount / scale) * 100}%` }}
+          transition={{ type: "spring", bounce: 0.25, duration: 0.6 }}
+        />
+        <motion.span
+          aria-hidden
+          className="absolute -inset-y-1.5 w-0 border-l-2 border-dashed border-ink/70"
+          initial={false}
+          animate={{ left: `${(limit / scale) * 100}%` }}
+          transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
+        />
+      </motion.div>
+      {over ? <p className="mt-2 text-xs text-flare">Over the limit: this one needs {"Sam's"} approval.</p> : null}
+    </div>
+  );
+}
 
 function fill(value: number, min: number, max: number) {
   return { "--fill": `${((value - min) / (max - min)) * 100}%` } as CSSProperties;
@@ -147,12 +180,28 @@ export default function AgentsPage() {
           <Panel className={preview.approved ? "border-mint/20" : "border-flare/25"}>
             <Eyebrow>Live preview</Eyebrow>
             <p className="mt-2 text-sm text-mute">With these limits, on a $1,000 landing page where 4 of 5 criteria passed, the agent would:</p>
-            <p className={`mt-4 font-sans text-2xl font-semibold font-stretch-semi-expanded ${preview.approved ? "text-mint" : "text-flare"}`}>{preview.approved ? `Release ${money(preview.releasable)}` : "Hand it back to you"}</p>
-            <ul className="mt-4 space-y-2 text-xs">
+            <div className="mt-4 h-9 overflow-hidden">
+              <AnimatePresence mode="popLayout" initial={false}>
+                <motion.p
+                  key={preview.approved ? "go" : "back"}
+                  initial={{ y: 28, opacity: 0, filter: "blur(6px)" }}
+                  animate={{ y: 0, opacity: 1, filter: "blur(0px)" }}
+                  exit={{ y: -28, opacity: 0, filter: "blur(6px)" }}
+                  transition={{ type: "spring", bounce: 0.25, duration: 0.5 }}
+                  className={`font-sans text-2xl font-semibold font-stretch-semi-expanded ${preview.approved ? "text-mint" : "text-flare"}`}
+                >
+                  {preview.approved ? `Release ${money(preview.releasable)}` : "Hand it back to you"}
+                </motion.p>
+              </AnimatePresence>
+            </div>
+            <SpendBar amount={preview.releasable} limit={mandate.perMilestoneLimit} />
+            <ul className="mt-5 space-y-2 text-xs">
               {preview.checks.map((c) => (
                 <li key={c.label} className="flex items-start justify-between gap-3">
                   <span className="text-mute">{c.label}</span>
-                  <span className={`shrink-0 font-mono ${c.ok ? "text-mint" : "text-flare"}`}>{c.ok ? "GO" : "NO-GO"}</span>
+                  <motion.span key={String(c.ok)} initial={{ scale: 1.4, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ type: "spring", bounce: 0.5, duration: 0.4 }} className={`shrink-0 font-mono ${c.ok ? "text-mint" : "text-flare"}`}>
+                    {c.ok ? "GO" : "NO-GO"}
+                  </motion.span>
                 </li>
               ))}
             </ul>

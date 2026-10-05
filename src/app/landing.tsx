@@ -1,8 +1,8 @@
 "use client";
 
+import { LayoutGroup, motion } from "motion/react";
 import Link from "next/link";
 import { useEffect, useState, type ReactNode } from "react";
-import { OrbitHero } from "@/components/cosmos";
 import { NumberTicker, trackSpotlight, useMagnetic } from "@/components/motion";
 import { Arrow } from "@/components/ui";
 
@@ -24,23 +24,6 @@ export function MagneticLink({ href, children, variant = "primary" }: { href: st
   );
 }
 
-export function HeroVisual() {
-  return (
-    <div className="relative mx-auto w-full max-w-[560px]">
-      <OrbitHero />
-      <span className="float glass absolute left-[2%] top-[14%] rounded-full px-3 py-1.5 text-xs font-medium text-nova" style={{ animationDelay: "0s" }}>
-        AI checked 5 criteria
-      </span>
-      <span className="float glass absolute right-[0%] top-[46%] rounded-full px-3 py-1.5 text-xs font-medium text-mint" style={{ animationDelay: "1.2s" }}>
-        +$800.00 released
-      </span>
-      <span className="float glass absolute bottom-[10%] left-[8%] rounded-full px-3 py-1.5 text-xs font-medium text-ice" style={{ animationDelay: "2.4s" }}>
-        $200.00 held for a fix
-      </span>
-    </div>
-  );
-}
-
 const demoChecks = [
   { title: "Page is live over HTTPS", kind: "Test", pass: true },
   { title: "Hero uses the approved headline", kind: "AI", pass: true },
@@ -49,34 +32,67 @@ const demoChecks = [
   { title: "Colours follow the style guide", kind: "AI", pass: true },
 ];
 
-/** A tiny live demo of the verifier on the landing page: run it and watch money become releasable. */
+const STEP_MS = 750;
+
+function Chip({ i, step }: { i: number; step: number }) {
+  const c = demoChecks[i];
+  const done = step > i;
+  const checking = step === i;
+  const failed = done && !c.pass;
+  return (
+    <motion.li
+      layout
+      layoutId={`demo-chip-${i}`}
+      transition={{ type: "spring", bounce: 0.2, duration: 0.7 }}
+      animate={failed ? { x: [0, -4, 4, -2, 0] } : { x: 0 }}
+      className={`flex items-center gap-3 rounded-2xl border px-3.5 py-3 text-sm ${
+        failed ? "border-flare/30 bg-flare/[0.06]" : done ? "border-mint/25 bg-mint/[0.06]" : checking ? "beam border-nova/40 bg-nova/[0.06]" : "border-white/[0.07] bg-white/[0.02]"
+      }`}
+    >
+      <span className={`grid size-5 shrink-0 place-items-center rounded-full ${failed ? "bg-flare text-void" : done ? "bg-mint text-void" : "border border-white/15"}`}>
+        {done ? (
+          <svg viewBox="0 0 16 16" className="size-3" aria-hidden>
+            {c.pass ? (
+              <motion.path d="M3 8.5l3 3 7-7" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" initial={{ pathLength: 0 }} animate={{ pathLength: 1 }} transition={{ duration: 0.3 }} />
+            ) : (
+              <path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" />
+            )}
+          </svg>
+        ) : checking ? (
+          <span className="size-2.5 animate-spin rounded-full border-2 border-nova/30 border-t-nova" />
+        ) : null}
+      </span>
+      <span className={`min-w-0 flex-1 truncate ${done || checking ? "text-ink" : "text-mute"}`}>{c.title}</span>
+      <span className={`font-mono text-xs ${failed ? "text-flare" : done ? "text-mint" : "text-dim"}`}>{failed ? "fix" : "$200"}</span>
+    </motion.li>
+  );
+}
+
+/** The money shot: each criterion that passes carries its $200 from the client's hold to the freelancer. */
 export function MiniVerifier() {
   const [step, setStep] = useState(-1);
   const running = step >= 0 && step < demoChecks.length;
 
   useEffect(() => {
     if (step < 0 || step >= demoChecks.length) return;
-    const t = setTimeout(() => setStep((s) => s + 1), 650);
+    const t = setTimeout(() => setStep((s) => s + 1), STEP_MS);
     return () => clearTimeout(t);
   }, [step]);
 
-  const released = demoChecks.slice(0, Math.max(0, step)).filter((c) => c.pass).length * 200;
+  const releasedIdx = demoChecks.map((c, i) => (step > i && c.pass ? i : -1)).filter((i) => i >= 0);
+  const heldIdx = demoChecks.map((_, i) => i).filter((i) => !releasedIdx.includes(i));
+  const released = releasedIdx.length * 200;
 
   return (
-    <div onMouseMove={trackSpotlight} className="spotlight glass rounded-3xl p-6 sm:p-8">
+    <div onMouseMove={trackSpotlight} className="spotlight glass rounded-[28px] p-5 sm:p-7">
       <div className="flex flex-wrap items-center justify-between gap-4">
-        <div>
-          <p className="font-mono text-[11px] uppercase tracking-[0.16em] text-dim">Landing page for Northwind · $1,000</p>
-          <p className="mt-2 font-display text-4xl font-semibold text-ink font-stretch-semi-expanded">
-            <NumberTicker value={released} duration={600} />
-          </p>
-          <p className="text-sm text-mute">releasable so far</p>
-        </div>
-        <button
+        <p className="font-mono text-[11px] uppercase tracking-[0.16em] text-dim">Landing page for Northwind · $1,000</p>
+        <motion.button
           type="button"
           onClick={() => setStep(0)}
           disabled={running}
-          className="sheen inline-flex h-11 items-center gap-2 rounded-full bg-star px-5 text-sm font-semibold text-void transition active:scale-[0.97] disabled:opacity-60"
+          whileTap={{ scale: 0.96 }}
+          className="sheen inline-flex h-11 items-center gap-2 rounded-full bg-star px-5 text-sm font-semibold text-void disabled:opacity-60"
         >
           {running ? (
             <>
@@ -88,24 +104,39 @@ export function MiniVerifier() {
           ) : (
             "Run the AI check"
           )}
-        </button>
+        </motion.button>
       </div>
-      <ul className="mt-6 divide-y divide-white/[0.06]">
-        {demoChecks.map((c, i) => {
-          const done = step > i;
-          const active = step === i;
-          return (
-            <li key={c.title} className="flex items-center gap-3 py-3 text-sm">
-              <span
-                className={`size-2.5 shrink-0 rounded-full transition-all duration-500 ${done ? (c.pass ? "bg-mint shadow-[0_0_12px_var(--color-mint)]" : "bg-flare shadow-[0_0_12px_var(--color-flare)]") : active ? "bg-nova pulse-soft" : "bg-white/15"}`}
-              />
-              <span className={`min-w-0 flex-1 transition-colors ${done || active ? "text-ink" : "text-dim"}`}>{c.title}</span>
-              <span className="font-mono text-[11px] text-dim">{c.kind}</span>
-              <span className={`w-20 text-right font-mono text-xs transition-opacity duration-500 ${done ? "opacity-100" : "opacity-0"} ${c.pass ? "text-mint" : "text-flare"}`}>{c.pass ? "+$200" : "held"}</span>
-            </li>
-          );
-        })}
-      </ul>
+      <LayoutGroup>
+        <div className="mt-6 grid gap-4 sm:grid-cols-2">
+          <div className="min-w-0 rounded-3xl border border-ice/15 bg-ice/[0.03] p-3.5">
+            <div className="flex items-baseline justify-between gap-2 px-1">
+              <span className="text-xs text-dim">Held on Sam&apos;s PayPal</span>
+              <span className="text-lg font-semibold text-ice">
+                <NumberTicker value={1000 - released} duration={600} />
+              </span>
+            </div>
+            <ul className="mt-3 space-y-2">
+              {heldIdx.map((i) => (
+                <Chip key={i} i={i} step={step} />
+              ))}
+            </ul>
+          </div>
+          <div className="min-w-0 rounded-3xl border border-mint/15 bg-mint/[0.03] p-3.5">
+            <div className="flex items-baseline justify-between gap-2 px-1">
+              <span className="text-xs text-dim">Released to Riya</span>
+              <span className="text-lg font-semibold text-mint">
+                <NumberTicker value={released} duration={600} />
+              </span>
+            </div>
+            <ul className="mt-3 space-y-2">
+              {releasedIdx.map((i) => (
+                <Chip key={i} i={i} step={step} />
+              ))}
+              {releasedIdx.length === 0 ? <li className="rounded-2xl border border-dashed border-white/10 px-3.5 py-6 text-center text-xs text-dim">Verified shares land here</li> : null}
+            </ul>
+          </div>
+        </div>
+      </LayoutGroup>
     </div>
   );
 }

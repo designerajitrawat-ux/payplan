@@ -1,5 +1,6 @@
 "use client";
 
+import { MotionConfig, motion } from "motion/react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import type { ReactNode } from "react";
@@ -70,9 +71,15 @@ function Sidebar() {
               <Link
                 href={item.href}
                 aria-current={active ? "page" : undefined}
-                className={`group relative flex items-center gap-3 whitespace-nowrap rounded-xl px-3 py-2.5 text-sm transition ${active ? "bg-white/[0.07] text-ink" : "text-mute hover:bg-white/[0.04] hover:text-ink"}`}
+                className={`group relative isolate flex items-center gap-3 whitespace-nowrap rounded-xl px-3 py-2.5 text-sm transition-colors ${active ? "text-ink" : "text-mute hover:text-ink"}`}
               >
-                {active ? <span className="absolute inset-y-2 left-0 hidden w-0.5 rounded-full bg-nova shadow-[0_0_12px_var(--color-nova)] lg:block" /> : null}
+                {active ? (
+                  <motion.span layoutId="nav-active" className="absolute inset-0 -z-10 rounded-xl bg-white/[0.07]" transition={{ type: "spring", bounce: 0.2, duration: 0.5 }}>
+                    <span className="absolute inset-y-2 left-0 hidden w-0.5 rounded-full bg-nova shadow-[0_0_12px_var(--color-nova)] lg:block" />
+                  </motion.span>
+                ) : (
+                  <span className="absolute inset-0 -z-10 rounded-xl transition-colors group-hover:bg-white/[0.04]" />
+                )}
                 <svg viewBox="0 0 24 24" className="size-[18px]" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
                   {item.icon}
                 </svg>
@@ -125,8 +132,8 @@ function MarketingHeader() {
           <a href="#how" className="hidden rounded-full px-3 py-1.5 transition hover:text-ink sm:inline">
             How it works
           </a>
-          <a href="#agents" className="hidden rounded-full px-3 py-1.5 transition hover:text-ink sm:inline">
-            Agents
+          <a href="#try" className="hidden rounded-full px-3 py-1.5 transition hover:text-ink sm:inline">
+            Try it
           </a>
           <Link href="/dashboard" className="rounded-full border border-white/10 px-3.5 py-1.5 text-ink transition hover:border-white/25 hover:bg-white/5">
             Open the app
@@ -144,28 +151,37 @@ export function Chrome({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const landing = pathname === "/";
   return (
-    <div className="grain relative isolate min-h-screen">
-      <Starfield />
-      {landing ? (
-        <>
-          <MarketingHeader />
-          <main>{children}</main>
-          <footer className="border-t border-white/[0.06]">
-            <p className="mx-auto max-w-7xl px-4 py-8 text-xs text-dim sm:px-6">{disclaimer}</p>
-          </footer>
-        </>
-      ) : (
-        <div className="lg:flex">
-          <Sidebar />
-          <div className="min-w-0 flex-1">
-            <main key={pathname} className="rise mx-auto w-full max-w-6xl px-4 pb-44 pt-6 sm:px-8 lg:pt-10">
-              {children}
-            </main>
-            <footer className="mx-auto max-w-6xl px-4 pb-8 text-xs text-dim sm:px-8">{disclaimer}</footer>
+    <MotionConfig reducedMotion="user" transition={{ type: "spring", bounce: 0.15, duration: 0.6 }}>
+      <div className="grain relative isolate min-h-screen">
+        <Starfield />
+        {landing ? (
+          <>
+            <MarketingHeader />
+            <main>{children}</main>
+            <footer className="border-t border-white/[0.06]">
+              <p className="mx-auto max-w-7xl px-4 py-8 text-xs text-dim sm:px-6">{disclaimer}</p>
+            </footer>
+          </>
+        ) : (
+          <div className="lg:flex">
+            <Sidebar />
+            <div className="min-w-0 flex-1">
+              {/* Enter-only transition: exit animations fight the router, which swaps the page immediately. */}
+              <motion.main
+                key={pathname}
+                initial={{ opacity: 0, y: 14, filter: "blur(6px)" }}
+                animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+                transition={{ type: "spring", bounce: 0, duration: 0.5 }}
+                className="mx-auto w-full max-w-6xl px-4 pb-44 pt-6 sm:px-8 lg:pt-10"
+              >
+                {children}
+              </motion.main>
+              <footer className="mx-auto max-w-6xl px-4 pb-8 text-xs text-dim sm:px-8">{disclaimer}</footer>
+            </div>
           </div>
-        </div>
-      )}
-      <Toaster />
-    </div>
+        )}
+        <Toaster />
+      </div>
+    </MotionConfig>
   );
 }
