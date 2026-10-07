@@ -1,11 +1,15 @@
 # PayPlan web app
 
-PayPlan (working name) handles milestone payments for freelancers. The client locks each milestone with a PayPal authorization. An AI verifier checks the delivered work against the agreed criteria, and only the share that passed is released.
+PayPlan (working name) is milestone payments for freelancers, where the money moves only for work that is checked.
 
-> **Current state: clickable prototype with dummy data.** No backend, no real PayPal calls and no real AI calls yet.
-> Data lives in the browser's localStorage. Use **Reset demo** in the sidebar to start over.
+1. The client locks each milestone with a **PayPal authorization hold** on their own PayPal account. Nothing is charged, and PayPlan never holds the money.
+2. When the freelancer delivers, an **AI checker** opens the delivered work and judges it against the criteria both sides agreed.
+3. It signs a report, and **only the share that passed is captured**.
+4. What failed stays a hold while the freelancer fixes it.
 
-## Run it
+The client can approve each release themselves or hand that job to their **AI agent**, within limits they set.
+
+## Run it locally (no keys needed)
 
 ```bash
 cd web
@@ -13,50 +17,118 @@ npm install
 npm run dev
 ```
 
-Open http://localhost:3000 and press **Start the walkthrough**.
+Open http://localhost:3000 and press **Start the walkthrough**. With no keys set, the app runs on:
 
-### Single-file preview
+| Part | Without keys | With keys |
+|---|---|---|
+| PayPal | A simulated PayPal in the server process. Every screen says "Simulated PayPal". | The real **PayPal sandbox** (`PAYPAL_CLIENT_ID`, `PAYPAL_CLIENT_SECRET`) |
+| Database | Embedded Postgres (PGlite) in `web/.data/` | Neon Postgres (`DATABASE_URL`) |
+| Checker | Plain tests only: page is live, form sends, mobile audit. Everything else goes to "Needs a person". | AI judge (`LLM_API_KEY`, Gemini by default), plus PageSpeed mobile audit and screenshot (`PAGESPEED_API_KEY`) |
+
+Copy `.env.example` to `.env.local` to set keys. Never commit real values.
+
+### The walkthrough
+
+1. **Riya (freelancer)** pastes the client's brief. The AI drafts acceptance criteria with weights and must-pass gates; she edits and creates the milestone. The agreed spec gets a SHA-256 **Agreement ID**.
+2. **Sam (client)** picks who approves releases (himself, or his AI agent within its limits) and approves a PayPal **authorization hold**.
+3. Riya submits the work. In the walkthrough it is a sample client site served by this app at `/demo/northwind/v1`; its contact form is broken on purpose.
+4. The **checker** runs live and saves every step to the log:
+   - opens the URL
+   - sends a test message through the form
+   - runs the mobile audit
+   - asks the AI about the rest
+   - signs the report
+5. Sam's **agent** works through its mandate (go / no-go) and captures the verified share, or hands the decision back. With manual approval, Sam holds a button to release, or appeals to a person.
+6. Riya submits the fix (`/demo/northwind/v2`). Only what failed is checked again, and the rest is captured automatically.
+7. **Demo buttons** end a review or fix window early, so you can see the timer rules without waiting days:
+   - the verified share is released when the client stays silent
+   - the rest of the hold is voided when the fix window ends
+
+## How money moves (PayPal sandbox)
+
+| Step | PayPal API |
+|---|---|
+| Client locks the milestone | `POST /v2/checkout/orders` (intent `AUTHORIZE`), approved with the PayPal JS SDK v6 button, then `POST /v2/checkout/orders/{id}/authorize` |
+| Verified share released | `POST /v2/payments/authorizations/{id}/capture` with `final_capture: false` (partial) |
+| Last share released | the same call with `final_capture: true` |
+| Fix window ends | `POST /v2/payments/authorizations/{id}/void` |
+| Long jobs | `POST /v2/payments/authorizations/{id}/reauthorize` |
+| Team splits | `POST /v1/payments/payouts` |
+| Disputes | `POST /v1/customer/disputes/{id}/provide-evidence` with the signed report |
+| Events | webhooks, checked with `POST /v1/notifications/verify-webhook-signature` |
+
+The app takes these precautions:
+- **No double charges.** Every money move is saved as "pending" with its `PayPal-Request-Id` *before* PayPal is called. A double click, a crash or a lost reply re-sends the same key, so PayPal never moves money twice. Tests cover all three.
+- **Webhooks are trusted only when checked.** Each one is verified with PayPal and processed once. A capture whose reply was lost is completed from its webhook.
+
+## Safety in the checker
+- **Delivered pages are untrusted.** Their content is fenced off in the prompt. A page that tries to instruct the checker never gets a pass; a person looks instead.
+- **No probing private networks.** The checker never fetches private or local addresses in production.
+- **The AI never moves money by itself.**
+  - The rules engine turns verdicts into an amount, capped by the PayPal hold.
+  - The agent can act only inside its mandate.
+- **No fake AI.** Without an AI key, nothing is called AI: criteria drafting returns a labelled template, and judgement calls go to a person.
+
+## Deploy
+1. **Vercel:** Root Directory `web`. The `vercel-build` script applies database migrations, then builds.
+2. **Neon Postgres:** set `DATABASE_URL`.
+3. **Environment variables:** listed in `.env.example`. Set `CRON_SECRET` too.
+4. **PayPal webhook:** point it at `https://<your-app>/api/paypal/webhook` and set `PAYPAL_WEBHOOK_ID`.
+5. **Timer job:** `.github/workflows/timer.yml` calls `/api/cron/due` every 30 minutes. Add the repository secrets `APP_URL` and `CRON_SECRET`. Scheduled runs only happen on the default branch.
+
+`GET /api/health` shows which PayPal mode, database and checker are active (no secrets).
+
+## Tests
 
 ```bash
-npm run preview:build
+npm test          # unit and integration tests (vitest, Postgres in memory)
+npm run lint
+npx tsc --noEmit  # run `npx next typegen` first on a fresh clone
 ```
 
-This writes `preview-dist/payplan.html`, one HTML file with the whole prototype inside. It needs no server: open `preview-dist/index.html` in a browser or host the file anywhere. The preview uses the same pages; `preview/` holds the hash router and small stand-ins for `next/link` and `next/navigation`.
-
-## Walkthrough (7 steps)
-
-1. **Freelancer** creates a milestone. "Draft criteria with AI" stands in for the AI helper.
-2. **Client** chooses who approves releases (themselves, or their AI agent within its limits) and locks the money with a simulated PayPal authorization.
-3. **Freelancer** submits the work.
-4. The AI checker runs live: a log, a constellation of criteria and a running "verified so far" amount. In the prototype the results are scripted.
-5. **Client's agent** checks the signed report against its mandate (go / no-go) and releases $800; $200 waits for a fix. With manual approval the client holds a button to release, or appeals.
-6. **Freelancer** submits a fix. Only the failed criterion is checked again, and the rest is released.
-7. The **dashboard** shows every milestone and where its money is. The **Agents** page sets the agent's limits, with a live preview.
-
-## Design language
-
-Dark "deep orbit" theme. Colour always means money state: amber for money moving, ice for money held, mint for released, flare for not met, violet for AI and agents. Fonts: Hubot Sans (headlines), Mona Sans (text and amounts, because its zero is plain) and Martian Mono (logs and IDs). Motion respects `prefers-reduced-motion`. Details are in `docs/design-language.md` at the repo root.
+The tests run against a real Postgres (PGlite) and a simulated PayPal that enforces PayPal's rules: idempotency keys, captures capped by the hold, and no captures after a void. They cover:
+- the full money flow, including partial and final captures
+- double clicks, refused and lost PayPal replies, and webhook reconciliation
+- the agent mandate
+- the timers and appeals
+- the API and workspace isolation
+- the checker's evidence, form test, PageSpeed parsing and prompt-injection guard
+- AI drafting
 
 ## Code map
 
 | Path | What it is |
 |---|---|
 | `src/app/` | Pages: landing, `new`, `dashboard`, `agents`, `m/[id]/{fund,submit,verify,report,decide}` |
-| `src/components/` | UI building blocks, walkthrough card, simulated PayPal button, countdowns |
-| `src/components/cosmos.tsx` | Starfield, landing orbit, verifier constellation, money orbit, rings |
-| `src/components/motion.tsx`, `toast.tsx` | Number ticker, spotlight, magnetic links, text scramble, hold-to-release, toasts |
-| `src/lib/decision.ts` | Rules engine: verdicts to releasable amount, and the agent's go / no-go checks (kept for the real app) |
-| `src/lib/activity.ts` | Milestone timeline derived from stored records |
-| `src/lib/store.ts` | Prototype-only store (localStorage). Replaced by the API in Phase 1 |
-| `src/lib/seed.ts`, `criteria-presets.ts` | Dummy milestones and scripted verifier results |
-| `preview/` | Single-file preview build (esbuild + Tailwind CLI) |
+| `src/app/api/` | Route handlers: milestones and actions, mandate, criteria drafting, PayPal webhook and config, timer, health |
+| `src/app/demo/northwind/` | The sample client site the walkthrough delivers (v1 broken form, v2 fixed) |
+| `src/server/paypal/` | Typed PayPal REST client, and the simulated PayPal |
+| `src/server/db/` | Drizzle schema; Neon or embedded Postgres. Migrations are in `drizzle/` |
+| `src/server/milestones/service.ts` | Every state change and money move |
+| `src/server/domain/rules.ts` | Rules engine in integer cents: releasable amount, agent review, hashing |
+| `src/server/verifier/` | Evidence collectors, AI and rules judges, the check run |
+| `src/server/criteria/draft.ts` | AI drafting of acceptance criteria |
+| `src/lib/store.ts` | What screens import: `store-remote.ts` (the API) in the app, `store-local.ts` (dummy data) in the static preview |
+| `src/components/paypal-button.tsx` | PayPal Web SDK v6 button |
+| `preview/` | Single-file static preview of the prototype (`npm run preview:build`) |
 
-## Next (Phase 1)
+## Design language
 
-Replace the dummy store with the real PayPal sandbox:
-- Orders v2 AUTHORIZE
-- partial capture and void
-- Payouts
-- webhooks
+The theme is a dark "deep orbit". Colour always means money state:
 
-Add a database behind the same screens.
+| Colour | Meaning |
+|---|---|
+| Amber | Money moving, or "needs a person" |
+| Ice | Money held |
+| Mint | Released |
+| Flare | Not met |
+| Violet | AI and agents |
+
+Fonts:
+- **Hubot Sans** for headlines.
+- **Mona Sans** for text and amounts.
+- **Martian Mono** for logs.
+
+Motion respects `prefers-reduced-motion`. Details are in `docs/design-language.md`.
+
+PayPal is a trademark of PayPal, Inc. This project is not affiliated with PayPal.

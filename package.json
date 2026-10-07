@@ -10,7 +10,8 @@
     "preview:build": "node preview/build.mjs",
     "test": "vitest run",
     "db:generate": "drizzle-kit generate",
-    "db:migrate": "drizzle-kit migrate"
+    "db:migrate": "node scripts/migrate.mjs",
+    "vercel-build": "node scripts/migrate.mjs && next build"
   },
   "dependencies": {
     "@neondatabase/serverless": "^1.2.0",
