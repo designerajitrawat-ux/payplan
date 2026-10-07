@@ -6,8 +6,11 @@ import { services } from "@/server/app";
 export async function GET() {
   try {
     const s = await services();
-    const mandate = await s.milestones.getMandate(await workspaceId());
-    return NextResponse.json({ mandate: mandate ?? null });
+    const row = await s.milestones.getMandate(await workspaceId());
+    if (!row) return NextResponse.json({ mandate: null });
+    const { workspaceId: _hidden, ...mandate } = row;
+    void _hidden;
+    return NextResponse.json({ mandate });
   } catch (error) {
     return errorResponse(error);
   }

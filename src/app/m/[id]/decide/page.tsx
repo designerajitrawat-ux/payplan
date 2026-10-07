@@ -8,11 +8,12 @@ import { MilestoneOrbit } from "@/components/milestone-orbit";
 import { MilestoneShell, partyNames } from "@/components/milestone-shell";
 import { HoldButton, NumberTicker } from "@/components/motion";
 import { Countdown } from "@/components/time";
-import { toast } from "@/components/toast";
+import { toast, toastError } from "@/components/toast";
+import { useAction } from "@/components/use-action";
 import { Arrow, Avatar, Button, ButtonLink, Chip, Eyebrow, Field, MoneyBar, Panel, RoleChip, inputClass } from "@/components/ui";
 import { agentReview, ledgerTotals, releasableAmount } from "@/lib/decision";
 import { money } from "@/lib/format";
-import { acceptRelease, agentDecide, autoRelease, openAppeal, setApproval, useMandate, withdrawAppeal } from "@/lib/store";
+import { acceptRelease, agentDecide, endReviewWindow, openAppeal, setApproval, useDemoControls, useMandate, withdrawAppeal } from "@/lib/store";
 import { stagger } from "@/lib/style";
 import type { AgentCheck, Milestone } from "@/lib/types";
 
@@ -73,9 +74,13 @@ function AgentDecision({ m }: { m: Milestone }) {
     timers.push(
       setTimeout(
         () => {
-          agentDecide(m.id);
-          if (review.approved) toast(`${money(review.releasable)} released to ${names.freelancer}`, `${mandate.name} captured the verified share on PayPal.`, "good");
-          else toast("Handed back to you", `${mandate.name} found something outside its limits.`, "warn");
+          agentDecide(m.id).then(
+            () => {
+              if (review.approved) toast(`${money(review.releasable)} released to ${names.freelancer}`, `${mandate.name} captured the verified share on PayPal.`, "good");
+              else toast("Handed back to you", `${mandate.name} found something outside its limits.`, "warn");
+            },
+            (error: unknown) => toastError(error, "The agent could not finish"),
+          );
         },
         CHECK_MS * (count + 1) + 1100,
       ),
@@ -84,6 +89,7 @@ function AgentDecision({ m }: { m: Milestone }) {
   }, [m.id, count, review.approved, review.releasable, mandate.name, names.freelancer]);
 
   const done = shown >= count;
+  const { pending, run } = useAction();
   return (
     <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
       <div className="min-w-0 space-y-6">
@@ -124,7 +130,7 @@ function AgentDecision({ m }: { m: Milestone }) {
             <NumberTicker value={review.releasable} from={0} />
           </p>
           <p className="mt-2 text-sm text-mute">Captured from the hold on {names.client}&apos;s PayPal. The rest stays a hold.</p>
-          <Button variant="secondary" className="mt-5 w-full" onClick={() => setApproval(m.id, "client")}>
+          <Button variant="secondary" className="mt-5 w-full" disabled={pending} onClick={() => void run(() => setApproval(m.id, "client"), "Could not stop the agent")}>
             Stop, I&apos;ll decide myself
           </Button>
           <Link href="/agents" className="mt-2 flex min-h-8 items-center justify-center text-xs text-nova underline-offset-4 hover:underline">
@@ -152,9 +158,11 @@ function ManualDecision({ m }: { m: Milestone }) {
   const names = partyNames(m);
   const handedBack = m.agentDecision?.outcome === "handed_to_client" ? m.agentDecision : undefined;
 
-  function release() {
-    acceptRelease(m.id);
-    toast(`${money(releasable)} released to ${names.freelancer}`, "PayPal captured the verified share.", "good");
+  const demoControls = useDemoControls();
+  const { pending, run } = useAction();
+
+  async function release() {
+    if (await run(() => acceptRelease(m.id), "The release did not go through")) toast(`${money(releasable)} released to ${names.freelancer}`, "PayPal captured the verified share.", "good");
   }
 
   return (
@@ -189,17 +197,17 @@ function ManualDecision({ m }: { m: Milestone }) {
             <MoneyBar ledger={m.ledger} amount={m.amount} />
           </div>
           <div className="mt-7 flex flex-wrap items-start gap-3">
-            <HoldButton onComplete={release}>Hold to release {money(releasable)}</HoldButton>
+            <HoldButton onComplete={() => void release()}>Hold to release {money(releasable)}</HoldButton>
             <Button size="lg" variant="danger" onClick={() => setAppealing((v) => !v)}>
               Appeal to a person
             </Button>
           </div>
           {appealing ? (
             <div className="rise mt-6 space-y-3 rounded-2xl border border-flare/25 bg-flare/[0.04] p-4">
-              <Field label="What is wrong with the verdict?" hint="A person reviews the evidence. Nothing is released until then.">
+              <Field label="What is wrong with the verdict?" hint="A sentence or two. A person reviews the evidence, and nothing is released until then.">
                 <textarea className={`${inputClass} min-h-20`} value={reason} onChange={(e) => setReason(e.target.value)} placeholder="For example: the hero headline is right, but the button colour is wrong." />
               </Field>
-              <Button variant="danger" disabled={!reason.trim()} onClick={() => openAppeal(m.id, reason.trim())}>
+              <Button variant="danger" disabled={reason.trim().length < 10 || pending} onClick={() => void run(() => openAppeal(m.id, reason.trim()), "Could not send the appeal")}>
                 Send appeal
               </Button>
             </div>
@@ -213,12 +221,14 @@ function ManualDecision({ m }: { m: Milestone }) {
             <Countdown to={m.decisionDueAt} />
           </p>
           <p className="mt-2 text-sm leading-relaxed text-mute">When the review window ends, the verified {money(releasable)} is released automatically. A silent client cannot stall payment for work that passed.</p>
-          <Button variant="ghost" size="sm" className="mt-4 w-full" onClick={() => autoRelease(m.id)}>
-            Simulate: review window ends
-          </Button>
+          {demoControls ? (
+            <Button variant="ghost" size="sm" className="mt-4 w-full" disabled={pending} onClick={() => void run(() => endReviewWindow(m.id), "Could not end the review window")}>
+              Demo: end the review window now
+            </Button>
+          ) : null}
         </Panel>
         {handedBack ? null : (
-          <Button variant="secondary" className="w-full" onClick={() => setApproval(m.id, "agent")}>
+          <Button variant="secondary" className="w-full" disabled={pending} onClick={() => void run(() => setApproval(m.id, "agent"), "Could not hand this to the agent")}>
             Let my agent decide
           </Button>
         )}
@@ -249,6 +259,7 @@ function FocusHeading({ className, children }: { className: string; children: Re
 function Decision({ m }: { m: Milestone }) {
   const totals = ledgerTotals(m.ledger);
   const names = partyNames(m);
+  const { pending, run } = useAction();
 
   if (m.status === "appealed") {
     return (
@@ -277,10 +288,10 @@ function Decision({ m }: { m: Milestone }) {
               </li>
             ))}
           </ol>
-          <Button variant="secondary" className="mt-6" onClick={() => withdrawAppeal(m.id)}>
+          <Button variant="secondary" className="mt-6" disabled={pending} onClick={() => void run(() => withdrawAppeal(m.id), "Could not withdraw the appeal")}>
             Withdraw the appeal
           </Button>
-          <p className="mt-2 text-xs text-dim">In this prototype the review is not simulated. Withdraw to go back to the decision.</p>
+          <p className="mt-2 text-xs text-dim">The human review step is not built yet. Withdraw to go back to the decision.</p>
         </Panel>
         {m.walkthrough ? (
           <DemoGuide step={6}>

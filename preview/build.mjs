@@ -3,7 +3,16 @@
 
 import { execFileSync } from "node:child_process";
 import { mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import path from "node:path";
 import { build } from "esbuild";
+
+/** The preview has no server, so screens get the prototype store (dummy data in the browser). */
+const prototypeStore = {
+  name: "prototype-store",
+  setup(b) {
+    b.onResolve({ filter: /^@\/lib\/store$/ }, () => ({ path: path.resolve("src/lib/store-local.ts") }));
+  },
+};
 
 const out = "preview-dist";
 rmSync(out, { recursive: true, force: true });
@@ -21,6 +30,7 @@ await build({
     "next/link": "./preview/shims/next-link.tsx",
     "next/navigation": "./preview/shims/next-navigation.ts",
   },
+  plugins: [prototypeStore],
   logOverride: { "module-level-directive": "silent" },
   outfile: `${out}/app.js`,
 });

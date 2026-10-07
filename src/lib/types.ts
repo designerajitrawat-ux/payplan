@@ -19,8 +19,8 @@ export type Criterion = {
   mustPass: boolean;
   evidence: EvidenceType;
   check: CheckKind;
-  /** Scripted outcomes for the dummy-data prototype: first attempt, then after a fix. */
-  demo: { first: ScriptedResult; afterFix: ScriptedResult };
+  /** Scripted outcomes for the dummy-data prototype: first attempt, then after a fix. The real checker ignores them. */
+  demo?: { first: ScriptedResult; afterFix: ScriptedResult };
 };
 
 export type CriterionResult = ScriptedResult & { criterionId: string };
@@ -80,9 +80,25 @@ export type AgentDecision = {
   checks: AgentCheck[];
 };
 
+/** One line of the checker's live log. The criterion lines carry their result. */
+export type CheckLine = {
+  at: string;
+  verb: "open" | "shot" | "carry" | "test" | "rubric" | "decide" | "sign" | "note";
+  text: string;
+  tone?: "good" | "bad" | "ai" | "money";
+  criterionId?: string;
+  result?: ScriptedResult;
+};
+
+/** Where money moves: the clickable prototype, a simulated PayPal, or the real PayPal sandbox. */
+export type PayPalMode = "prototype" | "simulated" | "sandbox" | "live";
+
 export type Milestone = {
   id: string;
+  /** Short id people can read out ("M-1051"). Falls back to the id. */
+  displayId?: string;
   title: string;
+  brief?: string;
   clientName: string;
   clientEmail: string;
   freelancerName: string;
@@ -110,4 +126,19 @@ export type Milestone = {
   agentDecision?: AgentDecision;
   /** Created through the guided walkthrough, so the walkthrough card is shown on its pages. */
   walkthrough?: boolean;
+  /** The checker's log for the latest attempt, written while it runs. */
+  checks?: CheckLine[];
+};
+
+export type NewMilestoneInput = {
+  title: string;
+  brief?: string;
+  clientName: string;
+  clientEmail: string;
+  freelancerName?: string;
+  freelancerEmail?: string;
+  freelancerLocation?: string;
+  amount: number;
+  reviewWindowHours: number;
+  criteria: Omit<Criterion, "id">[];
 };

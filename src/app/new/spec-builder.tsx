@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
 import { DemoGuide } from "@/components/demo-guide";
 import { Arrow, Button, Chip, Eyebrow, Field, Panel, RoleChip, Toggle, inputClass } from "@/components/ui";
+import { useAction } from "@/components/use-action";
 import { genericCriterion, suggestCriteria } from "@/lib/criteria-presets";
 import { money } from "@/lib/format";
 import { createMilestone } from "@/lib/store";
@@ -43,6 +44,7 @@ export function SpecBuilder() {
   const [amount, setAmount] = useState(demo ? 1000 : 0);
   const [reviewWindowHours, setReviewWindowHours] = useState(48);
   const [brief, setBrief] = useState(demo ? DEMO_BRIEF : "");
+  const { pending, run } = useAction();
   const [criteria, setCriteria] = useState<Draft[]>([]);
   const [suggesting, setSuggesting] = useState(false);
   const [confirmReplace, setConfirmReplace] = useState(false);
@@ -102,7 +104,7 @@ export function SpecBuilder() {
       document.getElementById(first)?.focus();
       return;
     }
-    create();
+    void create();
   }
 
   /** Gives every criterion the same weight; any remainder goes to the first ones so the total is exactly 100. */
@@ -118,19 +120,23 @@ export function SpecBuilder() {
     setCriteria((list) => list.map((c) => (c.key === key ? { ...c, ...patch } : c)));
   }
 
-  function create() {
-    const id = createMilestone(
-      {
-        title: title.trim(),
-        clientName: clientName.trim() || "Client",
-        clientEmail: clientEmail.trim(),
-        amount,
-        reviewWindowHours,
-        criteria: criteria.map(withoutKey),
-      },
-      demo,
-    );
-    router.push(`/m/${id}/fund`);
+  async function create() {
+    let id = "";
+    const ok = await run(async () => {
+      id = await createMilestone(
+        {
+          title: title.trim(),
+          brief: brief.trim() || undefined,
+          clientName: clientName.trim() || "Client",
+          clientEmail: clientEmail.trim(),
+          amount,
+          reviewWindowHours,
+          criteria: criteria.map(withoutKey),
+        },
+        demo,
+      );
+    }, "Could not create the milestone");
+    if (ok) router.push(`/m/${id}/fund`);
   }
 
   return (
@@ -354,7 +360,7 @@ export function SpecBuilder() {
             ) : (
               <p className="mt-5 rounded-2xl border border-mint/20 bg-mint/[0.06] p-3.5 text-xs text-mint">Ready. {money(amount)} splits across {criteria.length} criteria.</p>
             )}
-            <Button className="group mt-5 w-full" size="lg" onClick={tryCreate} aria-describedby="create-status">
+            <Button className="group mt-5 w-full" size="lg" onClick={tryCreate} disabled={pending} aria-describedby="create-status">
               Create and get funding link
               <Arrow />
             </Button>

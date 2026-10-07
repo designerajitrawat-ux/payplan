@@ -9,7 +9,7 @@ function withIds(prefix: string, presets: Omit<Criterion, "id">[]): Criterion[] 
 }
 
 function firstReport(criteria: Criterion[], at: string): Report {
-  const results = criteria.map((c) => ({ criterionId: c.id, ...c.demo.first }));
+  const results = criteria.map((c) => ({ criterionId: c.id, ...c.demo!.first }));
   return { attempt: 1, results, verifiedAt: at, reportHash: previewHash(JSON.stringify(results) + at) };
 }
 

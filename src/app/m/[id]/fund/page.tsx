@@ -7,13 +7,54 @@ import { DemoGuide } from "@/components/demo-guide";
 import { MilestoneOrbit } from "@/components/milestone-orbit";
 import { MilestoneShell, partyNames } from "@/components/milestone-shell";
 import { CopyButton } from "@/components/motion";
+import { PayPalButton } from "@/components/paypal-button";
 import { PayPalMockButton } from "@/components/paypal-mock";
 import { When } from "@/components/time";
-import { toast } from "@/components/toast";
+import { toast, toastError } from "@/components/toast";
+import { useAction } from "@/components/use-action";
 import { Arrow, ButtonLink, Chip, Eyebrow, InfoTip, MoneyBar, Panel, RoleChip } from "@/components/ui";
 import { money } from "@/lib/format";
-import { fundMilestone, setApproval, useMandate } from "@/lib/store";
+import { completeFunding, fundWithSimulatedPayPal, setApproval, startFunding, useMandate, usePayPalMode } from "@/lib/store";
 import type { ApprovalMode, Milestone } from "@/lib/types";
+
+const MODE_NOTE = {
+  prototype: "Prototype: this simulates PayPal. The app uses a real PayPal sandbox authorization.",
+  simulated: "Simulated PayPal: this server has no PayPal sandbox keys, so nothing real is held.",
+  sandbox: "PayPal sandbox: sign in with a sandbox buyer account. No real money moves.",
+  live: "",
+} as const;
+
+/** The real PayPal button when the server has sandbox keys; a clearly labelled simulation otherwise. */
+function FundButton({ m, approval, agentNote }: { m: Milestone; approval: ApprovalMode; agentNote?: string }) {
+  const mode = usePayPalMode();
+  const { run } = useAction();
+  const locked = () => toast(`${money(m.amount)} locked on PayPal`, "Authorization approved. Nothing was charged.", "info");
+  if (!mode) return <div className="h-12 animate-pulse rounded-full bg-white/10" aria-label="Loading PayPal" />;
+  return (
+    <>
+      {mode === "sandbox" || mode === "live" ? (
+        <PayPalButton
+          createOrder={async () => (await startFunding(m.id)).orderId}
+          onApproved={async (orderId) => {
+            if (await run(() => completeFunding(m.id, orderId, approval), "PayPal approved, but the hold failed")) locked();
+          }}
+          onCancel={() => toast("PayPal closed", "Nothing was held.", "info")}
+          onError={(message) => toastError(new Error(message), "PayPal stopped")}
+        />
+      ) : (
+        <PayPalMockButton
+          amount={m.amount}
+          payerEmail={m.clientEmail}
+          agentNote={agentNote}
+          onApprove={() => {
+            void run(() => fundWithSimulatedPayPal(m.id, approval), "Could not lock the money").then((ok) => ok && locked());
+          }}
+        />
+      )}
+      <p className="mt-4 text-xs leading-relaxed text-dim">{MODE_NOTE[mode]}</p>
+    </>
+  );
+}
 
 function ApprovalChoice({ value, onChange, locked, compact = false }: { value: ApprovalMode; onChange: (v: ApprovalMode) => void; locked: boolean; compact?: boolean }) {
   const mandate = useMandate();
@@ -84,8 +125,10 @@ function Fund({ m }: { m: Milestone }) {
   const funded = m.status !== "awaiting_funding";
   const choice = funded ? m.approval : approval;
 
+  const { run } = useAction();
+
   function choose(mode: ApprovalMode) {
-    if (funded) setApproval(m.id, mode);
+    if (funded) void run(() => setApproval(m.id, mode), "Could not change who approves");
     else setLocalApproval(mode);
   }
 
@@ -110,17 +153,8 @@ function Fund({ m }: { m: Milestone }) {
                   <ApprovalChoice value={choice} onChange={choose} locked={false} compact />
                 </div>
                 <div className="mt-6">
-                  <PayPalMockButton
-                    amount={m.amount}
-                    payerEmail={m.clientEmail}
-                    agentNote={approval === "agent" ? `${mandate.name} may release verified work up to ${money(mandate.perMilestoneLimit)} from this hold.` : undefined}
-                    onApprove={() => {
-                      fundMilestone(m.id, approval);
-                      toast(`${money(m.amount)} locked on PayPal`, "Authorization approved. Nothing was charged.", "info");
-                    }}
-                  />
+                  <FundButton m={m} approval={approval} agentNote={approval === "agent" ? `${mandate.name} may release verified work up to ${money(mandate.perMilestoneLimit)} from this hold.` : undefined} />
                 </div>
-                <p className="mt-4 text-xs leading-relaxed text-dim">Prototype: this simulates PayPal. Phase 1 uses a real sandbox authorization.</p>
               </>
             ) : (
               <>

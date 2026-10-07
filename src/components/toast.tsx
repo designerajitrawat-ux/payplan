@@ -89,3 +89,8 @@ export function Toaster() {
     </div>
   );
 }
+
+/** Says why an action failed, in the server's words. */
+export function toastError(error: unknown, title = "That did not work") {
+  toast(title, error instanceof Error && error.message ? error.message : "Please try again.", "warn");
+}

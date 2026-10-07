@@ -4,7 +4,7 @@ import { MotionConfig, motion } from "motion/react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { finishVerification, resetDemo, useMilestones } from "@/lib/store";
+import { resetDemo, resumeBackgroundWork, useMilestones, usePayPalMode } from "@/lib/store";
 import { Starfield } from "./cosmos";
 import { clearToasts, Toaster } from "./toast";
 
@@ -66,13 +66,35 @@ function ResetButton({ className }: { className: string }) {
         }
         clearTimeout(timer.current);
         setArmed(false);
-        resetDemo();
-        router.push("/");
+        void resetDemo().then(() => router.push("/"));
       }}
       className={`${className} ${armed ? "text-sun" : ""}`}
     >
       {armed ? "Click again to reset" : "Reset demo"}
     </button>
+  );
+}
+
+const MODE_CARD = {
+  prototype: { title: "Prototype · dummy data", body: "No real money moves. The app runs every payment on the PayPal sandbox." },
+  simulated: { title: "Simulated PayPal", body: "This server has no PayPal sandbox keys, so PayPal is simulated. Nothing real moves." },
+  sandbox: { title: "PayPal sandbox", body: "Real PayPal API calls with test accounts. No real money moves." },
+  live: { title: "Live PayPal", body: "Real payments." },
+} as const;
+
+/** Says plainly what kind of money this deployment moves. */
+function ModeCard() {
+  const mode = usePayPalMode();
+  if (!mode) return null;
+  const card = MODE_CARD[mode];
+  return (
+    <div className="rounded-2xl border border-sun/20 bg-sun/[0.06] p-3.5 text-xs leading-relaxed text-mute">
+      <p className="flex items-center gap-2 font-semibold text-sun">
+        <span className="size-1.5 rounded-full bg-sun glow-dot pulse-soft" />
+        {card.title}
+      </p>
+      <p className="mt-1">{card.body}</p>
+    </div>
   );
 }
 
@@ -132,13 +154,7 @@ function Sidebar() {
         })}
       </ul>
       <div className="mt-auto hidden flex-col gap-3 lg:flex">
-        <div className="rounded-2xl border border-sun/20 bg-sun/[0.06] p-3.5 text-xs leading-relaxed text-mute">
-          <p className="flex items-center gap-2 font-semibold text-sun">
-            <span className="size-1.5 rounded-full bg-sun glow-dot pulse-soft" />
-            Prototype · dummy data
-          </p>
-          <p className="mt-1">No real money moves. Phase 1 switches every payment to the PayPal sandbox.</p>
-        </div>
+        <ModeCard />
         <ResetButton className="min-h-9 rounded-xl px-3 py-2 text-left text-xs font-medium text-dim transition hover:bg-white/[0.04] hover:text-ink" />
       </div>
     </nav>
@@ -168,24 +184,30 @@ function MarketingHeader() {
   );
 }
 
-const disclaimer = "Prototype with dummy data. No real payments are made. PayPal is a trademark of PayPal, Inc.; this project is not affiliated with PayPal.";
+const MODE_LINE = {
+  prototype: "Prototype with dummy data. No real payments are made.",
+  simulated: "Simulated PayPal: this server has no sandbox keys. No real payments are made.",
+  sandbox: "Runs on the PayPal sandbox with test accounts. No real money moves.",
+  live: "",
+} as const;
+
+/** What kind of money this deployment moves, plus the trademark note. */
+function Disclaimer() {
+  const mode = usePayPalMode();
+  return (
+    <>
+      {mode ? `${MODE_LINE[mode]} ` : null}PayPal is a trademark of PayPal, Inc.; this project is not affiliated with PayPal.
+    </>
+  );
+}
 
 /**
- * Finishes an AI check even if the person left the verify page, so a milestone never stays
- * "checking" forever. The verify page finishes sooner when it is open.
+ * Keeps a running check going after a reload, so a milestone never stays "checking" forever.
+ * In the app the checker runs on the server and this does nothing.
  */
 function BackgroundChecks() {
   const milestones = useMilestones();
-  useEffect(() => {
-    const timers = milestones
-      .filter((m) => m.status === "verifying")
-      .map((m) => {
-        const started = Date.parse(m.verifyStartedAt ?? m.submission?.submittedAt ?? m.createdAt);
-        const due = started + (m.criteria.length + 1) * 1100 + 4000;
-        return setTimeout(() => finishVerification(m.id), Math.max(0, due - Date.now()));
-      });
-    return () => timers.forEach(clearTimeout);
-  }, [milestones]);
+  useEffect(() => resumeBackgroundWork(milestones), [milestones]);
   return null;
 }
 
@@ -225,7 +247,9 @@ export function Chrome({ children }: { children: ReactNode }) {
               {children}
             </main>
             <footer className="border-t border-white/[0.06]">
-              <p className="mx-auto max-w-7xl px-4 py-8 text-xs text-dim sm:px-6">{disclaimer}</p>
+              <p className="mx-auto max-w-7xl px-4 py-8 text-xs text-dim sm:px-6">
+                <Disclaimer />
+              </p>
             </footer>
           </>
         ) : (
@@ -244,7 +268,9 @@ export function Chrome({ children }: { children: ReactNode }) {
               >
                 {children}
               </motion.main>
-              <footer className="mx-auto max-w-6xl px-4 pb-8 text-xs text-dim sm:px-8">{disclaimer}</footer>
+              <footer className="mx-auto max-w-6xl px-4 pb-8 text-xs text-dim sm:px-8">
+                <Disclaimer />
+              </footer>
             </div>
           </div>
         )}

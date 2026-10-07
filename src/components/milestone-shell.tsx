@@ -7,7 +7,7 @@ import { FlowSteps } from "@/components/flow-steps";
 import { CopyButton } from "@/components/motion";
 import { Chip, InfoTip, Panel, StatusChip } from "@/components/ui";
 import { money, shortHash } from "@/lib/format";
-import { useMilestone } from "@/lib/store";
+import { useMilestone, useMilestoneLoad } from "@/lib/store";
 import type { Milestone } from "@/lib/types";
 
 /** Short names for buttons and walkthrough text, e.g. "Continue as Sam". */
@@ -27,11 +27,22 @@ export function useMilestoneId(): string {
 export function MilestoneShell({ children }: { children: (m: Milestone) => ReactNode }) {
   const id = useMilestoneId();
   const m = useMilestone(id);
+  const load = useMilestoneLoad(id);
+  if (!m && load === "loading") {
+    return (
+      <div className="space-y-6" aria-busy="true" aria-label="Loading the milestone">
+        <div className="h-4 w-40 animate-pulse rounded bg-white/10" />
+        <div className="h-10 w-2/3 animate-pulse rounded-xl bg-white/10" />
+        <div className="h-24 animate-pulse rounded-3xl bg-white/[0.06]" />
+        <div className="h-64 animate-pulse rounded-3xl bg-white/[0.06]" />
+      </div>
+    );
+  }
   if (!m) {
     return (
       <Panel>
         <h1 className="font-display text-xl font-semibold">Milestone not found</h1>
-        <p className="mt-2 text-sm text-mute">It may have been removed when the demo was reset.</p>
+        <p className="mt-2 text-sm text-mute">It may belong to another browser, or it was removed when the demo was reset.</p>
         <Link href="/dashboard" className="mt-4 inline-block text-sm font-semibold text-nova underline-offset-4 hover:underline">
           Back to milestones
         </Link>
@@ -46,7 +57,7 @@ export function MilestoneShell({ children }: { children: (m: Milestone) => React
             Milestones
           </Link>
           <span aria-hidden>/</span>
-          <span className="font-mono text-xs text-mute">{m.id.toUpperCase()}</span>
+          <span className="font-mono text-xs text-mute">{m.displayId ?? m.id.toUpperCase()}</span>
         </div>
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div className="min-w-0">

@@ -172,14 +172,18 @@ describe("runVerification", () => {
     expect(second).toEqual(["open", "carry", "rubric", "decide", "sign"]);
   });
 
-  it("lets the client's agent decide as soon as the report is signed", async () => {
+  it("leaves the decision to the agent's own step, which the timer job runs if nobody watches", async () => {
     const ws = `ws-agent-${Math.random()}`;
     const { svc, id } = await submitted("agent", ws);
     await svc.upsertMandate({ workspaceId: ws, ownerName: "Sam", name: "Northwind buying agent", perMilestoneLimitCents: 100000, minConfidence: 0.85, releaseVerified: true, fundMilestones: true });
     await runVerification(svc, scriptedJudge(), id, { fetch: page("<p>ok</p>") });
+    expect((await svc.getMilestone(id)).status).toBe("awaiting_decision");
+    expect(await svc.pendingAgentDecisions(0)).toContainEqual({ id });
+    await svc.agentDecide(id);
     const view = await svc.getMilestone(id);
     expect(view.agentDecisions[0]).toMatchObject({ outcome: "released", amountCents: 60000 });
     expect(view.status).toBe("fix_window");
+    expect(await svc.pendingAgentDecisions(0)).not.toContainEqual({ id });
   });
 
   it("does nothing when another run already finished", async () => {

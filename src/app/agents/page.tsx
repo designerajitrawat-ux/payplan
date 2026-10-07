@@ -23,7 +23,7 @@ const tools = [
 
 // A sample report for the live preview: the Northwind landing page, 4 of 5 criteria passed.
 const sampleCriteria: Criterion[] = landingPagePreset.map((c, i) => ({ ...c, id: `sample-${i}` }));
-const sampleResults = sampleCriteria.map((c) => ({ criterionId: c.id, ...c.demo.first }));
+const sampleResults = sampleCriteria.map((c) => ({ criterionId: c.id, ...c.demo!.first }));
 
 /** How much of the agent's limit this release uses; over the dashed cap line it turns red and shakes. */
 function SpendBar({ amount, limit }: { amount: number; limit: number }) {

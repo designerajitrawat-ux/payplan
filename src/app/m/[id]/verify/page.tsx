@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import { ConfidenceRing, Constellation, type StarState } from "@/components/cosmos";
+import { useEffect, useRef } from "react";
+import { ConfidenceRing, Constellation, verdictTone, type StarState } from "@/components/cosmos";
 import { DemoGuide } from "@/components/demo-guide";
 import { MilestoneShell, partyNames } from "@/components/milestone-shell";
 import { NumberTicker, TextScramble } from "@/components/motion";
@@ -9,28 +9,32 @@ import { toast } from "@/components/toast";
 import { Arrow, ButtonLink, Chip, Eyebrow, Panel, RoleChip, VerdictChip } from "@/components/ui";
 import { releasableAmount } from "@/lib/decision";
 import { money, shortHash } from "@/lib/format";
-import { finishVerification } from "@/lib/store";
-import type { Criterion, Milestone, ScriptedResult } from "@/lib/types";
-
-const STEP_MS = 1100;
+import type { CheckLine, Milestone, Report, ScriptedResult } from "@/lib/types";
 
 const clock = new Intl.DateTimeFormat("en-GB", { hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false });
-
-type LogLine = { t: number; verb: string; text: string; tone?: "good" | "bad" | "money" | "ai" };
 
 function short(title: string) {
   return title.length > 46 ? `${title.slice(0, 44)}…` : title;
 }
 
-function resultLine(c: Criterion, r: ScriptedResult, t: number): LogLine {
-  const ok = r.verdict === "pass";
-  return c.check === "ai"
-    ? { t, verb: "rubric", text: `${short(c.title)} · ${r.confidence.toFixed(2)} ${ok ? "✓" : "✗"}`, tone: ok ? "ai" : "bad" }
-    : { t, verb: "test", text: `${short(c.title)} → ${short(r.evidence)} ${ok ? "✓" : "✗"}`, tone: ok ? "good" : "bad" };
+/** Older milestones have a report but no saved log: rebuild a short log from the report. */
+function logFromReport(m: Milestone, report: Report | undefined, previous: Report | undefined): CheckLine[] {
+  const at = report?.verifiedAt ?? m.submission?.submittedAt ?? m.createdAt;
+  const lines: CheckLine[] = [{ at, verb: "open", text: `${m.submission?.url || "delivered files"} → 200`, tone: "good" }];
+  if (!report) return lines;
+  for (const c of m.criteria) {
+    const r = report.results.find((x) => x.criterionId === c.id);
+    if (!r || (previous && previous.results.find((x) => x.criterionId === c.id)?.verdict === "pass")) continue;
+    const ok = r.verdict === "pass";
+    lines.push({ at, verb: c.check === "ai" ? "rubric" : "test", text: `${short(c.title)} · ${r.confidence.toFixed(2)} ${ok ? "✓" : "✗"}`, tone: ok ? (c.check === "ai" ? "ai" : "good") : "bad", criterionId: c.id, result: r });
+  }
+  const passed = report.results.filter((r) => r.verdict === "pass").length;
+  lines.push({ at, verb: "decide", text: `${passed}/${report.results.length} passed · releasable ${money(releasableAmount(m.criteria, report.results, m.amount))}`, tone: "money" });
+  lines.push({ at, verb: "sign", text: `report ${shortHash(report.reportHash)}`, tone: "money" });
+  return lines;
 }
 
 function Verifier({ m }: { m: Milestone }) {
-  const [revealed, setRevealed] = useState(0);
   const running = m.status === "verifying";
   const attempt = running ? m.reports.length + 1 : m.reports.length;
   const previous = running ? m.reports.at(-1) : m.reports.at(-2);
@@ -38,51 +42,34 @@ function Verifier({ m }: { m: Milestone }) {
   const names = partyNames(m);
   const logRef = useRef<HTMLOListElement>(null);
 
+  // The checker runs on its own (on the server in the app); this page only shows its log.
+  const wasRunning = useRef(running);
   useEffect(() => {
-    if (!running) return;
-    const timers = m.criteria.map((_, i) => setTimeout(() => setRevealed(i + 1), STEP_MS * (i + 1)));
-    timers.push(
-      setTimeout(() => {
-        finishVerification(m.id);
-        toast("Report signed", "Both sides can now see the evidence.", "info");
-      }, STEP_MS * (m.criteria.length + 1) + 300),
-    );
-    return () => timers.forEach(clearTimeout);
-  }, [running, m.id, m.criteria]);
+    if (wasRunning.current && !running) toast("Report signed", "Both sides can now see the evidence.", "info");
+    wasRunning.current = running;
+  }, [running]);
 
-  const rows = m.criteria.map((c, i) => {
+  const lines = m.checks?.length ? m.checks : logFromReport(m, finalReport, previous);
+  const logged = new Map(lines.filter((l) => l.criterionId && l.result).map((l) => [l.criterionId!, l.result!]));
+  const base = m.criteria.map((c) => {
     const prior = previous?.results.find((r) => r.criterionId === c.id);
     const carried = attempt > 1 && prior?.verdict === "pass";
-    const scripted = attempt === 1 ? c.demo.first : c.demo.afterFix;
-    const result: ScriptedResult | undefined = finalReport?.results.find((r) => r.criterionId === c.id) ?? (carried ? prior : scripted);
-    const done = !running || carried || revealed > i;
-    const checking = running && !carried && revealed === i;
-    const state: StarState = carried ? "carried" : done ? (result?.verdict === "pass" ? "pass" : "fail") : checking ? "checking" : "queued";
-    return { c, result, done, checking, carried, state };
+    const result: ScriptedResult | undefined = finalReport?.results.find((r) => r.criterionId === c.id) ?? logged.get(c.id) ?? (carried ? prior : undefined);
+    const done = !running || carried || logged.has(c.id);
+    return { c, result, done, carried };
+  });
+  // The criterion being checked now is the first one without a result.
+  const current = running ? base.findIndex((r) => !r.done) : -1;
+  const rows = base.map((r, i) => {
+    const checking = i === current;
+    const state: StarState = r.carried ? "carried" : r.done ? (r.result?.verdict === "pass" ? "pass" : r.result?.verdict === "review" ? "review" : "fail") : checking ? "checking" : "queued";
+    return { ...r, checking, state };
   });
 
   const totalWeight = m.criteria.reduce((sum, c) => sum + c.weight, 0) || 1;
   const passedWeight = rows.filter((r) => r.done && r.result?.verdict === "pass").reduce((sum, r) => sum + r.c.weight, 0);
   const verifiedAmount = Math.floor((m.amount * 100 * passedWeight) / totalWeight) / 100;
   const checkedCount = rows.filter((r) => r.done).length;
-
-  const base = Date.parse(m.submission?.submittedAt ?? m.createdAt) + (attempt > 1 ? 3_600_000 : 0);
-  const lines: LogLine[] = [
-    { t: base, verb: "open", text: `${m.submission?.url || "delivered files"} → 200`, tone: "good" },
-    { t: base + 2000, verb: "shot", text: "screenshots at 1440 px and 375 px saved" },
-  ];
-  if (attempt > 1) lines.push({ t: base + 3000, verb: "carry", text: `${rows.filter((r) => r.carried).length} criteria passed before; not run again` });
-  rows.forEach((r, i) => {
-    if (r.carried) return;
-    if (r.done && r.result) lines.push(resultLine(r.c, r.result, base + 4000 + i * 4000));
-    else if (r.checking) lines.push({ t: base + 4000 + i * 4000, verb: r.c.check === "ai" ? "rubric" : "test", text: `${short(r.c.title)} …`, tone: "ai" });
-  });
-  if (!running && finalReport) {
-    const passed = finalReport.results.filter((r) => r.verdict === "pass").length;
-    const releasable = releasableAmount(m.criteria, finalReport.results, m.amount);
-    lines.push({ t: base + 26000, verb: "decide", text: `${passed}/${finalReport.results.length} passed · releasable ${money(releasable)}`, tone: "money" });
-    lines.push({ t: base + 27000, verb: "sign", text: `report ${shortHash(finalReport.reportHash)}`, tone: "money" });
-  }
 
   useEffect(() => {
     const el = logRef.current;
@@ -160,7 +147,7 @@ function Verifier({ m }: { m: Milestone }) {
           <ol ref={logRef} tabIndex={0} aria-label="Checker log lines" className="max-h-80 space-y-2 overflow-auto p-5 font-mono text-[12px] leading-relaxed">
             {lines.map((l, i) => (
               <li key={`${l.verb}-${i}`} className="rise flex gap-3" style={{ animationDuration: "400ms" }}>
-                <span className="shrink-0 text-dim">{clock.format(new Date(l.t))}</span>
+                <span className="shrink-0 text-dim">{clock.format(new Date(l.at))}</span>
                 <span className={`w-12 shrink-0 ${l.tone === "ai" ? "text-nova" : l.tone === "money" ? "text-sun" : "text-ice"}`}>{l.verb}</span>
                 <span className={`min-w-0 break-words ${l.tone === "bad" ? "text-flare" : l.tone === "good" ? "text-ink" : "text-mute"}`}>{l.text}</span>
               </li>
@@ -179,10 +166,10 @@ function Verifier({ m }: { m: Milestone }) {
               key={c.id}
               className={`glass flex items-center gap-4 rounded-2xl p-4 transition-all duration-500 ${checking ? "beam" : ""} ${done && result?.verdict === "fail" ? "shake border-flare/30" : ""} ${!done && !checking ? "opacity-50" : ""}`}
             >
-              {done && result ? <ConfidenceRing value={result.confidence} tone={result.verdict === "pass" ? "mint" : "flare"} /> : <span className={`grid size-10 shrink-0 place-items-center rounded-full border ${checking ? "border-nova/50" : "border-white/10"}`}>{checking ? <span className="size-3 animate-spin rounded-full border-2 border-nova/30 border-t-nova" /> : <span className="size-1.5 rounded-full bg-white/20" />}</span>}
+              {done && result ? <ConfidenceRing value={result.verdict === "review" ? 1 : result.confidence} tone={verdictTone(result.verdict)} /> : <span className={`grid size-10 shrink-0 place-items-center rounded-full border ${checking ? "border-nova/50" : "border-white/10"}`}>{checking ? <span className="size-3 animate-spin rounded-full border-2 border-nova/30 border-t-nova" /> : <span className="size-1.5 rounded-full bg-white/20" />}</span>}
               <div className="min-w-0 flex-1">
                 <p className="text-sm font-medium text-ink">{c.title}</p>
-                <p className="mt-0.5 truncate text-xs text-dim">{carried ? "Passed before, not run again" : done && result ? result.evidence : checking ? (c.check === "ai" ? "Asking the AI rubric, with screenshots…" : "Running the automatic test…") : "Queued"}</p>
+                <p className="mt-0.5 truncate text-xs text-dim">{carried ? "Passed before, not run again" : done && result ? result.evidence : checking ? (c.check === "ai" ? "Asking the AI rubric…" : "Running the automatic test…") : "Queued"}</p>
               </div>
               {done && result ? <VerdictChip verdict={result.verdict} /> : null}
             </article>
@@ -210,7 +197,7 @@ function Verifier({ m }: { m: Milestone }) {
         <DemoGuide step={attempt > 1 ? 8 : 4} next={running ? undefined : { href: `/m/${m.id}/report`, label: "Open the report" }}>
           {attempt > 1
             ? "Only the criterion that failed is checked again. When it passes, the remaining share is released automatically, as agreed in the spec."
-            : "Watch the checker work. In the real app it opens the live URL in a browser, takes screenshots, runs tests and asks the AI rubric, then signs the report."}
+            : "Watch the checker work. It opens the delivered URL, runs the automatic tests, asks the AI rubric about the rest, then signs the report."}
         </DemoGuide>
       ) : null}
     </div>

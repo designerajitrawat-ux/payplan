@@ -79,12 +79,5 @@ export async function runVerification(svc: MilestoneService, judge: Judge, id: s
   }
   await line({ verb: "sign", text: `report ${report.reportHash.slice(0, 6)}…${report.reportHash.slice(-4)}`, tone: "money" });
 
-  if (attempt === 1 && m.approval === "agent") {
-    try {
-      await svc.agentDecide(id);
-    } catch (error) {
-      await line({ verb: "note", text: `The agent could not decide: ${error instanceof Error ? error.message : String(error)}`, tone: "bad" });
-    }
-  }
   return { ran: true as const, attempt, results };
 }

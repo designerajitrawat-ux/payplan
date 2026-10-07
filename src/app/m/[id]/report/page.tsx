@@ -1,16 +1,17 @@
 "use client";
 
-import { ConfidenceRing } from "@/components/cosmos";
+import { ConfidenceRing, verdictTone } from "@/components/cosmos";
 import { DemoGuide } from "@/components/demo-guide";
 import { MilestoneOrbit } from "@/components/milestone-orbit";
 import { MilestoneShell, partyNames } from "@/components/milestone-shell";
 import { CopyButton, NumberTicker, trackSpotlight } from "@/components/motion";
 import { Countdown, When } from "@/components/time";
+import { useAction } from "@/components/use-action";
 import { Arrow, Button, ButtonLink, Chip, Eyebrow, InfoTip, Panel, RoleChip, VerdictChip } from "@/components/ui";
 import { activityFor, type Actor } from "@/lib/activity";
 import { ledgerTotals, releasableAmount } from "@/lib/decision";
 import { money, shortHash } from "@/lib/format";
-import { voidRemainder } from "@/lib/store";
+import { endFixWindow, useDemoControls } from "@/lib/store";
 import { stagger } from "@/lib/style";
 import type { Criterion, CriterionResult, Milestone } from "@/lib/types";
 
@@ -49,6 +50,8 @@ function apiTrail(m: Milestone, releasable: number) {
 
 function ReportView({ m }: { m: Milestone }) {
   const report = m.reports.at(-1);
+  const demoControls = useDemoControls();
+  const { pending, run } = useAction();
   if (!report) {
     return (
       <Panel>
@@ -113,9 +116,11 @@ function ReportView({ m }: { m: Milestone }) {
                   Continue as {names.freelancer}: submit a fix
                   <Arrow />
                 </ButtonLink>
-                <Button variant="ghost" size="sm" onClick={() => voidRemainder(m.id)}>
-                  Simulate: fix window ends
-                </Button>
+                {demoControls ? (
+                  <Button variant="ghost" size="sm" disabled={pending} onClick={() => void run(() => endFixWindow(m.id), "Could not end the fix window")}>
+                    Demo: end the fix window now
+                  </Button>
+                ) : null}
               </>
             ) : m.status === "appealed" ? (
               <ButtonLink href={`/m/${m.id}/decide`} variant="secondary">
@@ -185,7 +190,7 @@ function ReportView({ m }: { m: Milestone }) {
                     <VerdictChip verdict={r.verdict} />
                     <h3 className="mt-3 font-medium text-ink">{c.title}</h3>
                   </div>
-                  <ConfidenceRing value={r.confidence} />
+                  <ConfidenceRing value={r.verdict === "review" ? 1 : r.confidence} tone={verdictTone(r.verdict)} />
                 </div>
                 <p className="text-sm text-mute">{r.reason}</p>
                 <div className="mt-auto flex flex-wrap items-center gap-2 text-xs text-dim">

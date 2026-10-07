@@ -11,7 +11,7 @@ import { Arrow, Avatar, ButtonLink, Chip, Eyebrow, Panel, StatusChip } from "@/c
 import { activityFor, type Actor } from "@/lib/activity";
 import { ledgerTotals } from "@/lib/decision";
 import { money } from "@/lib/format";
-import { useMilestones } from "@/lib/store";
+import { useMilestones, useMilestonesLoaded } from "@/lib/store";
 import { stagger } from "@/lib/style";
 import type { Milestone } from "@/lib/types";
 
@@ -50,6 +50,7 @@ const yourTurn: Partial<Record<Milestone["status"], string>> = { funded: "delive
 
 export default function Dashboard() {
   const milestones = useMilestones();
+  const loaded = useMilestonesLoaded();
   const [filter, setFilter] = useState<Filter>("all");
   const shown = milestones.filter(groups[filter]);
   const finishedTour = milestones.find((m) => m.walkthrough && m.status === "released");
@@ -190,7 +191,25 @@ export default function Dashboard() {
                 );
               })}
             </AnimatePresence>
-            {shown.length === 0 ? <li className="rounded-3xl border border-dashed border-brand-2/20 p-8 text-center text-sm text-dim">Nothing here right now.</li> : null}
+            {!loaded ? (
+              [0, 1, 2].map((i) => <li key={i} aria-hidden className="h-24 animate-pulse rounded-3xl bg-white/[0.05]" />)
+            ) : milestones.length === 0 ? (
+              <li className="rounded-3xl border border-dashed border-brand-2/25 p-8 text-center">
+                <p className="font-display text-lg font-semibold text-ink">No milestones yet</p>
+                <p className="mx-auto mt-2 max-w-sm text-sm text-mute">Take the guided walkthrough: you play both Riya and her client, and every money move is a real PayPal call.</p>
+                <div className="mt-5 flex flex-wrap justify-center gap-3">
+                  <ButtonLink href="/new?demo=1" className="group">
+                    Start the walkthrough
+                    <Arrow />
+                  </ButtonLink>
+                  <ButtonLink href="/new" variant="secondary">
+                    Create one myself
+                  </ButtonLink>
+                </div>
+              </li>
+            ) : shown.length === 0 ? (
+              <li className="rounded-3xl border border-dashed border-brand-2/20 p-8 text-center text-sm text-dim">Nothing here right now.</li>
+            ) : null}
           </motion.ul>
         </section>
 
@@ -225,11 +244,13 @@ export default function Dashboard() {
         <DemoGuide step="tour" next={{ href: "/agents", label: "Open the Agents page" }}>
           You finished the walkthrough: <strong>{money(finishedTour.amount)}</strong> was released criterion by criterion. Next, change the agent&apos;s limits and watch its decisions flip.
         </DemoGuide>
-      ) : (
+      ) : loaded && milestones.length > 0 && !milestones.some((m) => m.walkthrough) ? (
         <DemoGuide step="tour" next={{ href: "/new?demo=1", label: "Start the walkthrough" }}>
-          These are example milestones. One was bought by Sam&apos;s AI agent, which released the verified 80% on its own. Start the walkthrough to create your own.
+          {milestones.some((m) => m.boughtByAgent)
+            ? "These are example milestones. One was bought by Sam's AI agent, which released the verified 80% on its own. Start the walkthrough to create your own."
+            : "Start the walkthrough to follow one milestone from the brief to the money, as both Riya and her client."}
         </DemoGuide>
-      )}
+      ) : null}
     </div>
   );
 }

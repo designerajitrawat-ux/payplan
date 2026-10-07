@@ -7,7 +7,7 @@ export async function GET() {
   try {
     const s = await services();
     const views = await s.milestones.listMilestoneViews(await workspaceId());
-    return NextResponse.json({ milestones: views.map(publicView), paypal: s.paypalMode });
+    return NextResponse.json({ milestones: views.map(publicView), paypal: s.paypalMode, demoControls: s.demoControls, checker: s.judge.model });
   } catch (error) {
     return errorResponse(error);
   }

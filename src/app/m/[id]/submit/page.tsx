@@ -5,10 +5,11 @@ import { useState } from "react";
 import { DemoGuide } from "@/components/demo-guide";
 import { MilestoneShell, partyNames } from "@/components/milestone-shell";
 import { Countdown } from "@/components/time";
+import { useAction } from "@/components/use-action";
 import { Arrow, Button, ButtonLink, Chip, Eyebrow, Field, Panel, RoleChip, VerdictChip, inputClass } from "@/components/ui";
 import { ledgerTotals } from "@/lib/decision";
 import { money } from "@/lib/format";
-import { startFix, submitWork } from "@/lib/store";
+import { submitWork } from "@/lib/store";
 import { stagger } from "@/lib/style";
 import type { Milestone } from "@/lib/types";
 
@@ -36,10 +37,10 @@ function SubmitForm({ m }: { m: Milestone }) {
     }, 700);
   }
 
-  function send() {
-    if (fixing) startFix(m.id);
-    else submitWork(m.id, { url, prLink, files, note });
-    router.push(`/m/${m.id}/verify`);
+  const { pending, run } = useAction();
+
+  async function send() {
+    if (await run(() => submitWork(m.id, { url, prLink, files, note }), "Could not submit the work")) router.push(`/m/${m.id}/verify`);
   }
 
   if (m.status !== "funded" && !fixing) {
@@ -134,7 +135,7 @@ function SubmitForm({ m }: { m: Milestone }) {
               );
             })}
           </ul>
-          <Button className="group mt-6 w-full" size="lg" onClick={send} disabled={!url.trim()}>
+          <Button className="group mt-6 w-full" size="lg" onClick={() => void send()} disabled={!url.trim() || pending}>
             {fixing ? "Submit the fix for re-check" : "Submit for verification"}
             <Arrow />
           </Button>

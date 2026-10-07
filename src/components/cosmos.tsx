@@ -195,7 +195,7 @@ export function OrbitHero() {
   );
 }
 
-export type StarState = "queued" | "checking" | "pass" | "fail" | "carried";
+export type StarState = "queued" | "checking" | "pass" | "fail" | "review" | "carried";
 
 // Hand-placed points for up to eight criteria, so the shape reads like a constellation, not a chart.
 const SKY = [
@@ -213,7 +213,8 @@ const SKY = [
 export function Constellation({ states }: { states: StarState[] }) {
   const reduced = useReducedMotion();
   const points = states.map((_, i) => SKY[i % SKY.length]);
-  const color = (s: StarState) => (s === "fail" ? "var(--color-flare)" : s === "pass" || s === "carried" ? "var(--color-mint)" : s === "checking" ? "var(--color-nova)" : "rgba(255,255,255,0.28)");
+  const color = (s: StarState) =>
+    s === "fail" ? "var(--color-flare)" : s === "review" ? "var(--color-sun)" : s === "pass" || s === "carried" ? "var(--color-mint)" : s === "checking" ? "var(--color-nova)" : "rgba(255,255,255,0.28)";
   const resolved = (s: StarState) => s === "pass" || s === "fail" || s === "carried";
 
   return (
@@ -388,11 +389,15 @@ export function MoneyOrbit({
 }
 
 /** A small ring that fills to the AI's confidence. */
-export function ConfidenceRing({ value, tone = "mint" }: { value: number; tone?: "mint" | "flare" | "nova" }) {
+/** Ring colour for a verdict: green passed, red not met, amber needs a person. */
+export const verdictTone = (verdict: "pass" | "fail" | "review") => (verdict === "pass" ? "mint" : verdict === "fail" ? "flare" : "sun") as "mint" | "flare" | "sun";
+
+export function ConfidenceRing({ value, tone = "mint" }: { value: number; tone?: "mint" | "flare" | "nova" | "sun" }) {
   const r = 14;
   const circ = 2 * Math.PI * r;
+  const title = tone === "flare" ? `Not met · the AI is ${Math.round(value * 100)}% sure` : tone === "sun" ? "Needs a person to decide" : `AI confidence ${Math.round(value * 100)}%`;
   return (
-    <span className="relative inline-grid size-10 shrink-0 place-items-center" title={tone === "flare" ? `Not met · the AI is ${Math.round(value * 100)}% sure` : `AI confidence ${Math.round(value * 100)}%`}>
+    <span className="relative inline-grid size-10 shrink-0 place-items-center" title={title}>
       <svg viewBox="0 0 36 36" className="absolute inset-0 -rotate-90" aria-hidden>
         <circle cx="18" cy="18" r={r} fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth="3" />
         <circle cx="18" cy="18" r={r} fill="none" stroke={`var(--color-${tone})`} strokeWidth="3" strokeLinecap="round" strokeDasharray={`${value * circ} ${circ}`} style={{ transition: "stroke-dasharray 900ms cubic-bezier(.16,1,.3,1)" }} />
@@ -401,6 +406,10 @@ export function ConfidenceRing({ value, tone = "mint" }: { value: number; tone?:
         <svg viewBox="0 0 16 16" className="size-3.5 text-flare" role="img" aria-label="Not met">
           <path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
         </svg>
+      ) : tone === "sun" ? (
+        <span className="font-mono text-sm font-semibold text-sun" role="img" aria-label="Needs a person">
+          ?
+        </span>
       ) : (
         <span className="font-mono text-[11px] text-ink">{Math.round(value * 100)}</span>
       )}

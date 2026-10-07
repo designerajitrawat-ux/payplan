@@ -531,6 +531,15 @@ export function createMilestoneService(deps: { db: Db; paypal: PaymentGateway; n
       return captureDue(id, "release a verified fix", ["verifying"], "system", "Fix verified; the newly verified share is released as agreed");
     },
 
+    /** Reports the client's agent has not acted on yet. The agent acts within minutes even if nobody watches. */
+    async pendingAgentDecisions(olderThanMs: number) {
+      const before = new Date(now().getTime() - olderThanMs);
+      return db
+        .select({ id: t.milestones.id })
+        .from(t.milestones)
+        .where(and(eq(t.milestones.status, "awaiting_decision"), eq(t.milestones.approval, "agent"), lte(t.milestones.updatedAt, before)));
+    },
+
     /** Checks that started a while ago and never finished, for the timer job to pick up. */
     async stuckVerifications(olderThanMs: number) {
       const before = new Date(now().getTime() - olderThanMs);
