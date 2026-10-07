@@ -83,7 +83,7 @@ export type AgentDecision = {
 /** One line of the checker's live log. The criterion lines carry their result. */
 export type CheckLine = {
   at: string;
-  verb: "open" | "shot" | "carry" | "test" | "rubric" | "decide" | "sign" | "note";
+  verb: "open" | "shot" | "form" | "audit" | "carry" | "test" | "rubric" | "decide" | "sign" | "note";
   text: string;
   tone?: "good" | "bad" | "ai" | "money";
   criterionId?: string;

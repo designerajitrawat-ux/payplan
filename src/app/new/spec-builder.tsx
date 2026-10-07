@@ -14,7 +14,7 @@ import type { Criterion, EvidenceType } from "@/lib/types";
 type Draft = Omit<Criterion, "id"> & { key: number };
 
 const DEMO_BRIEF =
-  "Landing page for Northwind's new budgeting app. Use the approved headline \"Know where every rupee goes\" and the button \"Join the waitlist\". Must work on phones, include a working contact form, and follow our style guide (colours and logo attached).";
+  "Landing page for Northwind's new budgeting app. Use the approved headline \"Know where every rupee goes\" and the button \"Join the waitlist\". Must work on phones, include a working contact form, and follow our style guide: teal #0F766E and amber #F59E0B, with the Northwind compass logo.";
 
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 

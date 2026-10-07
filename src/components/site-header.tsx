@@ -233,6 +233,8 @@ function SkipLink() {
 export function Chrome({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const landing = pathname === "/";
+  // The sample client website that the checker opens is its own site, without PayPlan's frame.
+  if (pathname.startsWith("/demo/")) return <>{children}</>;
   return (
     <MotionConfig reducedMotion="user" transition={{ type: "spring", bounce: 0.15, duration: 0.6 }}>
       <div className="grain relative isolate min-h-screen">

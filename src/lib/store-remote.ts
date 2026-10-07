@@ -7,6 +7,9 @@ import type { AgentMandate, ApprovalMode, CheckLine, Milestone, MilestoneStatus,
 
 export type { NewMilestoneInput };
 
+/** Which store this build uses: "local" is the dummy-data prototype, "remote" is the app with its API. */
+export const storeKind: "local" | "remote" = "remote";
+
 // The app's store: the same hooks and actions as the prototype store, backed by the API.
 // Money, checks and decisions all happen on the server; this only fetches and caches.
 

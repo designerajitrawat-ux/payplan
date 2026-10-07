@@ -5,6 +5,7 @@ import { createMilestoneService, type MilestoneService, type PaymentGateway } fr
 import { createPayPalClient, type PayPalClient } from "./paypal/client";
 import { createSimulatedPayPal } from "./paypal/simulated";
 import { judgeFromEnv, type Judge } from "./verifier/judge";
+import type { CheckerOptions } from "./verifier/run";
 
 export type PayPalMode = "sandbox" | "live" | "simulated";
 
@@ -20,6 +21,8 @@ export type Services = {
   milestones: MilestoneService;
   webhookId?: string;
   judge: Judge;
+  /** Settings for the checker's real tests. */
+  checker: CheckerOptions;
   /** Buttons that end a review or fix window early, so the demo does not take days. */
   demoControls: boolean;
 };
@@ -31,7 +34,8 @@ export type Services = {
 export async function buildServices(env: Record<string, string | undefined> = process.env): Promise<Services> {
   const db = await createDb(env);
   const database = env.DATABASE_URL ? "postgres" : "embedded";
-  const common = { db, database, judge: judgeFromEnv(env), demoControls: env.DEMO_TIME_CONTROLS !== "off" } as const;
+  const checker: CheckerOptions = { pagespeedKey: env.PAGESPEED_API_KEY, allowPrivate: env.NODE_ENV !== "production" || env.ALLOW_PRIVATE_URLS === "1" };
+  const common = { db, database, judge: judgeFromEnv(env), checker, demoControls: env.DEMO_TIME_CONTROLS !== "off" } as const;
   if (env.PAYPAL_CLIENT_ID && env.PAYPAL_CLIENT_SECRET && env.PAYPAL_ENV !== "simulated") {
     const paypalMode = env.PAYPAL_ENV === "live" ? "live" : "sandbox";
     const paypalClient = createPayPalClient({ clientId: env.PAYPAL_CLIENT_ID, clientSecret: env.PAYPAL_CLIENT_SECRET, env: paypalMode });

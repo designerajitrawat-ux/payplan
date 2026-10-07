@@ -4,12 +4,20 @@
 import type { CriterionResultJson } from "../db/schema";
 import { releasableCents, formatCents } from "../domain/rules";
 import { InvalidStateError, type MilestoneService } from "../milestones/service";
-import { collectPage, type Evidence } from "./evidence";
-import type { Judge } from "./judge";
+import { collectPage, runPageSpeed, testForm, type Evidence, type FormTest, type PageSpeed } from "./evidence";
+import { NEEDS, type Judge } from "./judge";
+
+export type CheckerOptions = {
+  fetch?: typeof fetch;
+  /** Google API key for PageSpeed Insights (mobile audit and screenshot). */
+  pagespeedKey?: string;
+  /** Local runs may check http://localhost pages, such as the sample site. Never in production. */
+  allowPrivate?: boolean;
+};
 
 export type CheckLine = {
   attempt: number;
-  verb: "open" | "carry" | "test" | "rubric" | "decide" | "sign" | "note";
+  verb: "open" | "form" | "audit" | "carry" | "test" | "rubric" | "decide" | "sign" | "note";
   text: string;
   tone?: "good" | "bad" | "ai" | "money";
   criterionId?: string;
@@ -19,7 +27,7 @@ export type CheckLine = {
 const short = (title: string) => (title.length > 46 ? `${title.slice(0, 44)}…` : title);
 const mark = (v: CriterionResultJson["verdict"]) => (v === "pass" ? "✓" : v === "fail" ? "✗" : "?");
 
-export async function runVerification(svc: MilestoneService, judge: Judge, id: string, deps: { fetch?: typeof fetch } = {}) {
+export async function runVerification(svc: MilestoneService, judge: Judge, id: string, deps: CheckerOptions = {}) {
   const m = await svc.getMilestone(id);
   if (m.status !== "verifying") return { ran: false as const, reason: `milestone is ${m.status}` };
   const attempt = m.submissions.length;
@@ -35,7 +43,7 @@ export async function runVerification(svc: MilestoneService, judge: Judge, id: s
 
   let evidence: Evidence = { kind: "missing", reason: "No URL was submitted" };
   if (submission?.url) {
-    evidence = await collectPage(submission.url, deps);
+    evidence = await collectPage(submission.url, { fetch: deps.fetch, allowPrivate: deps.allowPrivate });
     await line(
       evidence.kind === "page"
         ? { verb: "open", text: `${submission.url} → ${evidence.status} in ${evidence.ms} ms`, tone: evidence.ok ? "good" : "bad" }
@@ -46,6 +54,30 @@ export async function runVerification(svc: MilestoneService, judge: Judge, id: s
   const passedBefore = new Map((previous?.results ?? []).filter((r) => r.verdict === "pass").map((r) => [r.criterionId, r]));
   if (passedBefore.size) await line({ verb: "carry", text: `${passedBefore.size} criteria passed before; not run again` });
 
+  // Real tests, run once and shared by the criteria that need them.
+  const todo = m.criteria.filter((c) => !passedBefore.has(c.id));
+  const needs = (re: RegExp) => todo.some((c) => re.test(c.title));
+  let form: FormTest | undefined;
+  if (evidence.kind === "page" && needs(NEEDS.form)) {
+    const target = evidence.facts.forms[0];
+    form = target ? await testForm(target, { fetch: deps.fetch, allowPrivate: deps.allowPrivate }) : { action: evidence.url, error: "No form found on the page" };
+    await line(
+      "error" in form
+        ? { verb: "form", text: `contact form → ${form.error}`, tone: "bad" }
+        : { verb: "form", text: `test message → ${form.status} from ${new URL(form.action).pathname}`, tone: form.ok ? "good" : "bad" },
+    );
+  }
+  let pagespeed: PageSpeed | undefined;
+  if (evidence.kind === "page" && (needs(NEEDS.mobile) || needs(NEEDS.speed) || needs(NEEDS.visual))) {
+    pagespeed = await runPageSpeed(evidence.finalUrl, { key: deps.pagespeedKey, fetch: deps.fetch });
+    await line(
+      "unavailable" in pagespeed
+        ? { verb: "audit", text: `mobile audit skipped: ${pagespeed.unavailable}` }
+        : { verb: "audit", text: `mobile audit: performance ${pagespeed.performance}, fits the screen ${pagespeed.contentWidth ? "yes" : "no"}${pagespeed.screenshot ? ", screenshot saved" : ""}`, tone: pagespeed.contentWidth ? "good" : "bad" },
+    );
+  }
+  const screenshot = pagespeed && !("unavailable" in pagespeed) ? pagespeed.screenshot : undefined;
+
   const results: CriterionResultJson[] = [];
   for (const c of m.criteria) {
     const carried = passedBefore.get(c.id);
@@ -53,7 +85,9 @@ export async function runVerification(svc: MilestoneService, judge: Judge, id: s
       results.push(carried);
       continue;
     }
-    const v = await judge.judge({ criterion: c, milestone: { title: m.title, brief: m.brief }, evidence });
+    const extra = { form: NEEDS.form.test(c.title) ? form : undefined, pagespeed: NEEDS.mobile.test(c.title) || NEEDS.speed.test(c.title) || NEEDS.visual.test(c.title) ? pagespeed : undefined };
+    const image = c.check === "ai" && NEEDS.visual.test(c.title) ? screenshot : undefined;
+    const v = await judge.judge({ criterion: c, milestone: { title: m.title, brief: m.brief }, evidence, extra, image });
     results.push({ criterionId: c.id, ...v });
     await line({
       verb: c.check === "ai" ? "rubric" : "test",

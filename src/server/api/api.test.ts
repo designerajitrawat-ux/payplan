@@ -11,7 +11,7 @@ let s: Services;
 beforeAll(async () => {
   const db = await createPgliteDb();
   const simulated = createSimulatedPayPal();
-  s = { db, database: "embedded", paypalMode: "simulated", paypal: simulated.gateway, simulated, milestones: createMilestoneService({ db, paypal: simulated.gateway }), judge: createRulesJudge(), demoControls: true };
+  s = { db, database: "embedded", paypalMode: "simulated", paypal: simulated.gateway, simulated, milestones: createMilestoneService({ db, paypal: simulated.gateway }), judge: createRulesJudge(), checker: {}, demoControls: true };
 }, 30_000);
 
 const body = {

@@ -9,17 +9,28 @@ import { useAction } from "@/components/use-action";
 import { Arrow, Button, ButtonLink, Chip, Eyebrow, Field, Panel, RoleChip, VerdictChip, inputClass } from "@/components/ui";
 import { ledgerTotals } from "@/lib/decision";
 import { money } from "@/lib/format";
-import { submitWork } from "@/lib/store";
+import { storeKind, submitWork } from "@/lib/store";
 import { stagger } from "@/lib/style";
 import type { Milestone } from "@/lib/types";
 
 const SAMPLE_FILES = ["style-guide-check.png", "hero-1440.png", "mobile-375.png"];
 
+/**
+ * Where the walkthrough's delivered site lives. In the app it is the sample Northwind site that the
+ * checker really opens: v1 has a broken contact form, v2 is the fix.
+ */
+function sampleDelivery(fixing: boolean, previous?: string) {
+  if (storeKind === "local") return previous || "https://northwind-landing.example";
+  const sample = `${window.location.origin}/demo/northwind/`;
+  if (!previous || previous.startsWith(sample)) return `${sample}${fixing ? "v2" : "v1"}`;
+  return previous;
+}
+
 function SubmitForm({ m }: { m: Milestone }) {
   const router = useRouter();
   const fixing = m.status === "fix_window";
-  const [url, setUrl] = useState(m.submission?.url || "https://northwind-landing.example");
-  const [prLink, setPrLink] = useState(m.submission?.prLink || "https://github.com/riya-designs/northwind-landing/pull/12");
+  const [url, setUrl] = useState(() => (m.walkthrough || storeKind === "local" ? sampleDelivery(fixing, m.submission?.url) : m.submission?.url || ""));
+  const [prLink, setPrLink] = useState(m.submission?.prLink || (storeKind === "local" ? "https://github.com/riya-designs/northwind-landing/pull/12" : ""));
   const [files, setFiles] = useState<string[]>(m.submission?.files ?? []);
   const [uploading, setUploading] = useState<string | null>(null);
   const [note, setNote] = useState(fixing ? "Fixed the contact form endpoint; it now returns 200 and shows a confirmation." : "");

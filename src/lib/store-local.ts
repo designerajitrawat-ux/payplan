@@ -8,6 +8,9 @@ import type { AgentMandate, ApprovalMode, CheckLine, Criterion, CriterionResult,
 
 export type { NewMilestoneInput };
 
+/** Which store this build uses: "local" is the dummy-data prototype, "remote" is the app with its API. */
+export const storeKind: "local" | "remote" = "local";
+
 // Prototype store: dummy data kept in the browser (localStorage). The static preview build uses it;
 // the app itself uses store-remote.ts. Both export the same hooks and actions.
 

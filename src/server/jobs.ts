@@ -10,7 +10,7 @@ const AGENT_GRACE_MS = 2 * 60_000;
 export async function runTimers(s: Services) {
   const done: { id: string; job: string; ok: boolean; error?: string }[] = [];
   for (const { id } of await s.milestones.stuckVerifications(STALLED_MS)) {
-    await runVerification(s.milestones, s.judge, id).then(
+    await runVerification(s.milestones, s.judge, id, s.checker).then(
       () => done.push({ id, job: "verify", ok: true }),
       (e: unknown) => done.push({ id, job: "verify", ok: false, error: e instanceof Error ? e.message : String(e) }),
     );

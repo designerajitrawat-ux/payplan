@@ -16,7 +16,7 @@ export async function POST(request: Request, ctx: RouteContext<"/api/milestones/
     const result = await runAction(s, await workspaceId(), id, body);
     if (result.milestone.status === "verifying") {
       // Start the checker once the reply is on its way. The timer job finishes it if this run dies.
-      after(() => runVerification(s.milestones, s.judge, id).catch((error: unknown) => console.error("verification failed", id, error)));
+      after(() => runVerification(s.milestones, s.judge, id, s.checker).catch((error: unknown) => console.error("verification failed", id, error)));
     }
     return NextResponse.json(result);
   } catch (error) {
