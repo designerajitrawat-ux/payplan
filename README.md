@@ -61,6 +61,10 @@ The app takes these precautions:
 - **No double charges.** Every money move is saved as "pending" with its `PayPal-Request-Id` *before* PayPal is called. A double click, a crash or a lost reply re-sends the same key, so PayPal never moves money twice. Tests cover all three.
 - **Webhooks are trusted only when checked.** Each one is verified with PayPal and processed once. A capture whose reply was lost is completed from its webhook.
 
+## Signed reports
+
+Every acceptance report is signed with Ed25519. Its id is the SHA-256 of exactly what was signed. Anyone with the link can open `/r/<id>` to see whether it is genuine and unchanged, with the verdicts and the PayPal ids. Anyone can also download it from `/api/reports/<id>` and check it themselves against `/api/reports/key`.
+
 ## Safety in the checker
 - **Delivered pages are untrusted.** Their content is fenced off in the prompt. A page that tries to instruct the checker never gets a pass; a person looks instead.
 - **No probing private networks.** The checker never fetches private or local addresses in production.
@@ -72,7 +76,7 @@ The app takes these precautions:
 ## Deploy
 1. **Vercel:** Root Directory `web`. The `vercel-build` script applies database migrations, then builds.
 2. **Neon Postgres:** set `DATABASE_URL`.
-3. **Environment variables:** listed in `.env.example`. Set `CRON_SECRET` too.
+3. **Environment variables:** listed in `.env.example`. Set `CRON_SECRET` too, and `REPORT_SIGNING_KEY` (`npm run keys:generate`) so signed reports stay verifiable across deploys.
 4. **PayPal webhook:** point it at `https://<your-app>/api/paypal/webhook` and set `PAYPAL_WEBHOOK_ID`.
 5. **Timer job:** `.github/workflows/timer.yml` calls `/api/cron/due` every 30 minutes. Add the repository secrets `APP_URL` and `CRON_SECRET`. Scheduled runs only happen on the default branch.
 

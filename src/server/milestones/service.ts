@@ -9,8 +9,9 @@ import { randomBytes } from "node:crypto";
 import { and, asc, desc, eq, inArray, lte, sql } from "drizzle-orm";
 import type { Db } from "../db/client";
 import * as t from "../db/schema";
-import { agentReview, moneyTotals, releasableCents, sha256 } from "../domain/rules";
+import { agentReview, canonicalJson, moneyTotals, releasableCents, sha256 } from "../domain/rules";
 import { PayPalError, type PayPalClient } from "../paypal/client";
+import { memorySigner, verifySignature, type Signer } from "../signing";
 
 export type PaymentGateway = Pick<PayPalClient, "createAuthorizeOrder" | "authorizeOrder" | "captureAuthorization" | "voidAuthorization">;
 
@@ -86,9 +87,10 @@ function errorJson(error: unknown): t.PayPalErrorJson {
   return { message: error instanceof Error ? error.message : String(error) };
 }
 
-export function createMilestoneService(deps: { db: Db; paypal: PaymentGateway; now?: () => Date }) {
+export function createMilestoneService(deps: { db: Db; paypal: PaymentGateway; now?: () => Date; signer?: Signer }) {
   const { db, paypal } = deps;
   const now = deps.now ?? (() => new Date());
+  const signer = deps.signer ?? memorySigner();
 
   async function log(tx: Tx | Db, milestoneId: string, actor: Actor, type: string, detail: Record<string, unknown> = {}) {
     await tx.insert(t.events).values({ milestoneId, actor, type, detail, at: now() });
@@ -351,15 +353,30 @@ export function createMilestoneService(deps: { db: Db; paypal: PaymentGateway; n
       const report = await db.transaction(async (tx) => {
         const m = await find(tx, id, true);
         if (m.status !== "verifying") throw new InvalidStateError(id, "record a report", m.status);
-        const ids = new Set((await criteriaOf(tx, id)).map((c) => c.id));
+        const crit = await criteriaOf(tx, id);
+        const ids = new Set(crit.map((c) => c.id));
         if (input.results.length !== ids.size || input.results.some((r) => !ids.has(r.criterionId) || r.confidence < 0 || r.confidence > 1)) {
           throw new ValidationError("The report must have one result per criterion, with confidence from 0 to 1");
         }
         const attempt = (await tx.$count(t.reports, eq(t.reports.milestoneId, id))) + 1;
         const verifiedAt = now();
+        // Exactly what is signed. Anyone can recompute its hash and check the signature.
+        const payload = {
+          v: 1,
+          type: "payplan.acceptance-report",
+          milestone: { id, number: m.number, title: m.title, specHash: m.specHash, amountCents: m.amountCents, currency: m.currency, client: m.clientName, freelancer: m.freelancerName },
+          attempt,
+          verifiedAt: verifiedAt.toISOString(),
+          checker: input.model,
+          criteria: crit.map((c) => ({ id: c.id, title: c.title, weight: c.weight, mustPass: c.mustPass })),
+          results: input.results,
+          releasableCents: releasableCents(crit, input.results, moneyTotals(await moves(tx, id)).authorized),
+          paypal: { orderId: m.paypalOrderId, authorizationId: m.paypalAuthorizationId },
+        };
+        const message = canonicalJson(payload);
         const [report] = await tx
           .insert(t.reports)
-          .values({ milestoneId: id, attempt, results: input.results, model: input.model, verifiedAt, reportHash: sha256({ milestoneId: id, specHash: m.specHash, attempt, results: input.results, verifiedAt: verifiedAt.toISOString() }) })
+          .values({ milestoneId: id, attempt, results: input.results, model: input.model, verifiedAt, reportHash: sha256(payload), payload, signature: signer.sign(message), signerKeyId: signer.keyId })
           .returning();
         await log(tx, id, "system", "verified", { attempt, passed: input.results.filter((r) => r.verdict === "pass").length, total: input.results.length });
         if (attempt === 1) {
@@ -479,6 +496,29 @@ export function createMilestoneService(deps: { db: Db; paypal: PaymentGateway; n
     async getMandate(workspaceId: string) {
       const [row] = await db.select().from(t.agentMandates).where(eq(t.agentMandates.workspaceId, workspaceId));
       return row;
+    },
+
+    /**
+     * Public check of a report by its hash: is the payload unchanged, and was it signed by this
+     * deployment's key? Also lists what PayPal did for the milestone since.
+     */
+    async verifyReport(reportHash: string) {
+      const [report] = await db.select().from(t.reports).where(eq(t.reports.reportHash, reportHash));
+      if (!report) return undefined;
+      const message = canonicalJson(report.payload);
+      const hashMatches = sha256(report.payload) === report.reportHash;
+      const knownKey = report.signerKeyId === signer.keyId;
+      const signatureValid = knownKey && verifySignature(message, report.signature, signer.publicKeyPem);
+      const paid = await db
+        .select({ kind: t.moneyMoves.kind, amountCents: t.moneyMoves.amountCents, paypalId: t.moneyMoves.paypalId, at: t.moneyMoves.completedAt })
+        .from(t.moneyMoves)
+        .where(and(eq(t.moneyMoves.milestoneId, report.milestoneId), eq(t.moneyMoves.status, "completed")))
+        .orderBy(asc(t.moneyMoves.id));
+      return { reportHash: report.reportHash, payload: report.payload, signature: report.signature, signerKeyId: report.signerKeyId, publicKey: knownKey ? signer.publicKeyPem : null, hashMatches, knownKey, signatureValid, valid: hashMatches && signatureValid, paypalMoves: paid };
+    },
+
+    signingKey() {
+      return { keyId: signer.keyId, publicKeyPem: signer.publicKeyPem, source: signer.source };
     },
 
     /** Everything a page needs about one milestone, in one call. */

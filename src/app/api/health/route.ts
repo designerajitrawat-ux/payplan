@@ -5,7 +5,7 @@ import { services } from "@/server/app";
 export async function GET() {
   try {
     const s = await services();
-    return NextResponse.json({ ok: true, paypal: s.paypalMode, database: s.database, webhook: Boolean(s.webhookId), checker: s.judge.model, demoControls: s.demoControls });
+    return NextResponse.json({ ok: true, paypal: s.paypalMode, database: s.database, webhook: Boolean(s.webhookId), checker: s.judge.model, demoControls: s.demoControls, signingKey: s.milestones.signingKey().source });
   } catch (error) {
     return NextResponse.json({ ok: false, error: error instanceof Error ? error.message : String(error) }, { status: 503 });
   }

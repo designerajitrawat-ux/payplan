@@ -118,7 +118,13 @@ export const reports = pgTable(
     /** Which model and prompt produced the verdicts, for the audit trail. */
     model: text("model").notNull(),
     verifiedAt: ts("verified_at").notNull(),
-    reportHash: text("report_hash").notNull(),
+    /** SHA-256 of the signed payload. Also the report's public id (/r/<hash>). */
+    reportHash: text("report_hash").notNull().unique(),
+    /** Exactly what was signed: canonical JSON of this object. */
+    payload: jsonb("payload").$type<Record<string, unknown>>().notNull().default(sql`'{}'::jsonb`),
+    /** Ed25519 signature (base64) and the fingerprint of the key that made it. */
+    signature: text("signature").notNull().default(""),
+    signerKeyId: text("signer_key_id").notNull().default(""),
   },
   (t) => [uniqueIndex("reports_milestone_attempt_idx").on(t.milestoneId, t.attempt)],
 );

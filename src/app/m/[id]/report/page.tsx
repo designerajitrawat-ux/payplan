@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { ConfidenceRing, verdictTone } from "@/components/cosmos";
 import { DemoGuide } from "@/components/demo-guide";
 import { MilestoneOrbit } from "@/components/milestone-orbit";
@@ -11,7 +12,7 @@ import { Arrow, Button, ButtonLink, Chip, Eyebrow, InfoTip, Panel, RoleChip, Ver
 import { activityFor, type Actor } from "@/lib/activity";
 import { ledgerTotals, releasableAmount } from "@/lib/decision";
 import { money, shortHash } from "@/lib/format";
-import { endFixWindow, useDemoControls } from "@/lib/store";
+import { endFixWindow, storeKind, useDemoControls, usePayPalMode } from "@/lib/store";
 import { stagger } from "@/lib/style";
 import type { Criterion, CriterionResult, Milestone } from "@/lib/types";
 
@@ -51,6 +52,7 @@ function apiTrail(m: Milestone, releasable: number) {
 function ReportView({ m }: { m: Milestone }) {
   const report = m.reports.at(-1);
   const demoControls = useDemoControls();
+  const paypalMode = usePayPalMode();
   const { pending, run } = useAction();
   if (!report) {
     return (
@@ -250,13 +252,21 @@ function ReportView({ m }: { m: Milestone }) {
                 </dd>
               </div>
             </dl>
-            <p className="mt-4 text-xs leading-relaxed text-dim">If a dispute is opened, this report becomes the evidence file sent to PayPal.</p>
+            <p className="mt-4 text-xs leading-relaxed text-dim">
+              {storeKind === "remote" ? "Signed with Ed25519, so anyone with the link can check it is genuine. " : ""}If a dispute is opened, this report becomes the evidence file sent to PayPal.
+            </p>
+            {storeKind === "remote" ? (
+              <Link href={`/r/${report.reportHash}`} className="mt-3 inline-flex min-h-8 items-center gap-1.5 text-xs font-semibold text-nova underline-offset-4 hover:underline">
+                Verify this report publicly
+                <Arrow className="size-3" />
+              </Link>
+            ) : null}
           </Panel>
 
           <section aria-label="PayPal calls" className="overflow-hidden rounded-3xl border border-white/[0.08] bg-void/80">
             <div className="flex flex-wrap items-center justify-between gap-2 border-b border-white/[0.06] px-5 py-3.5">
               <span className="text-sm font-medium text-ink">PayPal calls</span>
-              <span className="font-mono text-xs text-dim">simulated · sandbox in Phase 1</span>
+              <span className="font-mono text-xs text-dim">{paypalMode === "sandbox" ? "PayPal sandbox" : paypalMode === "live" ? "PayPal" : "simulated"}</span>
             </div>
             <div className="overflow-x-auto" tabIndex={0} role="region" aria-label="PayPal calls, scrolls sideways">
               <table className="w-full min-w-[520px] font-mono text-xs">

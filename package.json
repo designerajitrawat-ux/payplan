@@ -11,7 +11,8 @@
     "test": "vitest run",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "node scripts/migrate.mjs",
-    "vercel-build": "node scripts/migrate.mjs && next build"
+    "vercel-build": "node scripts/migrate.mjs && next build",
+    "keys:generate": "node scripts/generate-signing-key.mjs"
   },
   "dependencies": {
     "@neondatabase/serverless": "^1.2.0",

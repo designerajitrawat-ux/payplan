@@ -235,6 +235,15 @@ export function Chrome({ children }: { children: ReactNode }) {
   const landing = pathname === "/";
   // The sample client website that the checker opens is its own site, without PayPlan's frame.
   if (pathname.startsWith("/demo/")) return <>{children}</>;
+  // Public report pages stand alone: the reader may not use PayPlan at all.
+  if (pathname.startsWith("/r/")) {
+    return (
+      <div className="grain relative isolate min-h-screen">
+        <Starfield />
+        <main id="content">{children}</main>
+      </div>
+    );
+  }
   return (
     <MotionConfig reducedMotion="user" transition={{ type: "spring", bounce: 0.15, duration: 0.6 }}>
       <div className="grain relative isolate min-h-screen">

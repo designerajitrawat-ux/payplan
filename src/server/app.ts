@@ -6,6 +6,7 @@ import { createPayPalClient, type PayPalClient } from "./paypal/client";
 import { createSimulatedPayPal } from "./paypal/simulated";
 import { judgeFromEnv, type Judge } from "./verifier/judge";
 import type { CheckerOptions } from "./verifier/run";
+import { signerFromEnv } from "./signing";
 
 export type PayPalMode = "sandbox" | "live" | "simulated";
 
@@ -36,13 +37,14 @@ export async function buildServices(env: Record<string, string | undefined> = pr
   const database = env.DATABASE_URL ? "postgres" : "embedded";
   const checker: CheckerOptions = { pagespeedKey: env.PAGESPEED_API_KEY, allowPrivate: env.NODE_ENV !== "production" || env.ALLOW_PRIVATE_URLS === "1" };
   const common = { db, database, judge: judgeFromEnv(env), checker, demoControls: env.DEMO_TIME_CONTROLS !== "off" } as const;
+  const signer = signerFromEnv(env);
   if (env.PAYPAL_CLIENT_ID && env.PAYPAL_CLIENT_SECRET && env.PAYPAL_ENV !== "simulated") {
     const paypalMode = env.PAYPAL_ENV === "live" ? "live" : "sandbox";
     const paypalClient = createPayPalClient({ clientId: env.PAYPAL_CLIENT_ID, clientSecret: env.PAYPAL_CLIENT_SECRET, env: paypalMode });
-    return { ...common, paypalMode, paypal: paypalClient, paypalClient, milestones: createMilestoneService({ db, paypal: paypalClient }), webhookId: env.PAYPAL_WEBHOOK_ID };
+    return { ...common, paypalMode, paypal: paypalClient, paypalClient, milestones: createMilestoneService({ db, paypal: paypalClient, signer }), webhookId: env.PAYPAL_WEBHOOK_ID };
   }
   const simulated = createSimulatedPayPal();
-  return { ...common, paypalMode: "simulated", paypal: simulated.gateway, simulated, milestones: createMilestoneService({ db, paypal: simulated.gateway }) };
+  return { ...common, paypalMode: "simulated", paypal: simulated.gateway, simulated, milestones: createMilestoneService({ db, paypal: simulated.gateway, signer }) };
 }
 
 const holder = globalThis as unknown as { __payplanServices?: Promise<Services> };
