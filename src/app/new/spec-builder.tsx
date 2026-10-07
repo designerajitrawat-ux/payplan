@@ -5,10 +5,11 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
 import { DemoGuide } from "@/components/demo-guide";
 import { Arrow, Button, Chip, Eyebrow, Field, Panel, RoleChip, Toggle, inputClass } from "@/components/ui";
+import { toastError } from "@/components/toast";
 import { useAction } from "@/components/use-action";
-import { genericCriterion, suggestCriteria } from "@/lib/criteria-presets";
+import { genericCriterion } from "@/lib/criteria-presets";
 import { money } from "@/lib/format";
-import { createMilestone } from "@/lib/store";
+import { createMilestone, draftCriteria } from "@/lib/store";
 import type { Criterion, EvidenceType } from "@/lib/types";
 
 type Draft = Omit<Criterion, "id"> & { key: number };
@@ -76,20 +77,27 @@ export function SpecBuilder() {
     setConfirmReplace(false);
     setSuggesting(true);
     setDraftNote(null);
+    const previous = criteria;
     if (mode === "replace") setCriteria([]);
-    setTimeout(() => {
-      const suggestion = suggestCriteria(brief);
-      const drafted = suggestion.criteria.map((c) => ({ ...c, key: nextKey++ }));
-      setCriteria((list) => (mode === "add" ? [...list, ...drafted] : drafted));
-      setDraftNote(
-        suggestion.kind === "general"
-          ? "This brief did not match a template, so the AI drafted general criteria. Edit them so they describe this job."
-          : mode === "add"
-            ? "Drafted criteria were added below yours. Use Split evenly to fix the weights."
-            : "Drafted from the brief. Check the wording and the weights before you create.",
-      );
-      setSuggesting(false);
-    }, 1200);
+    draftCriteria(brief)
+      .then((d) => {
+        const drafted = d.criteria.map((c) => ({ ...c, key: nextKey++ }));
+        setCriteria((list) => (mode === "add" ? [...list, ...drafted] : drafted));
+        setDraftNote(
+          d.source === "template"
+            ? `${d.reason ?? "AI drafting is not available"}, so these come from the ${d.template ?? "general"} template. Edit them so they describe this job.`
+            : d.source === "prototype" && d.template === "general"
+              ? "This brief did not match a template, so the AI drafted general criteria. Edit them so they describe this job."
+              : mode === "add"
+                ? "Drafted criteria were added below yours. Use Split evenly to fix the weights."
+                : "Drafted from the brief. Check the wording and the weights before you create.",
+        );
+      })
+      .catch((error: unknown) => {
+        setCriteria(previous);
+        toastError(error, "Could not draft criteria");
+      })
+      .finally(() => setSuggesting(false));
   }
 
   function addCriterion() {

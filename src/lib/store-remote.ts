@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useSyncExternalStore } from "react";
 import type { MilestoneView } from "@/server/milestones/service";
 import { defaultMandate } from "./seed";
-import type { AgentMandate, ApprovalMode, CheckLine, Milestone, MilestoneStatus, NewMilestoneInput, PayPalMode, Submission } from "./types";
+import type { AgentMandate, ApprovalMode, CheckLine, CriteriaDraft, Milestone, MilestoneStatus, NewMilestoneInput, PayPalMode, Submission } from "./types";
 
 export type { NewMilestoneInput };
 
@@ -275,6 +275,11 @@ async function act(id: string, body: Record<string, unknown>): Promise<ActionRes
     if (error instanceof ApiError && error.status === 409) quiet(refreshOne(id));
     throw error;
   }
+}
+
+/** The server drafts criteria from the brief: with AI when it has a key, otherwise from a labelled template. */
+export async function draftCriteria(brief: string): Promise<CriteriaDraft> {
+  return api<CriteriaDraft>("/api/criteria/draft", { method: "POST", body: { brief } });
 }
 
 export async function createMilestone(input: NewMilestoneInput, walkthrough = false): Promise<string> {

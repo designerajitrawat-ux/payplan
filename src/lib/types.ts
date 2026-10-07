@@ -142,3 +142,11 @@ export type NewMilestoneInput = {
   reviewWindowHours: number;
   criteria: Omit<Criterion, "id">[];
 };
+
+/** Criteria drafted from a brief: by the AI, from a template (no AI set up), or by the prototype's script. */
+export type CriteriaDraft = {
+  source: "ai" | "template" | "prototype";
+  template?: "website" | "logo" | "general";
+  reason?: string;
+  criteria: Omit<Criterion, "id">[];
+};

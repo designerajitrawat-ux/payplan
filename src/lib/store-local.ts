@@ -4,7 +4,8 @@ import { useSyncExternalStore } from "react";
 import { agentReview, ledgerTotals, releasableAmount } from "./decision";
 import { fakePayPalId, money, previewHash, shortHash } from "./format";
 import { defaultMandate, makeSeed } from "./seed";
-import type { AgentMandate, ApprovalMode, CheckLine, Criterion, CriterionResult, Milestone, NewMilestoneInput, PayPalMode, ScriptedResult, Submission } from "./types";
+import { suggestCriteria } from "./criteria-presets";
+import type { AgentMandate, ApprovalMode, CheckLine, CriteriaDraft, Criterion, CriterionResult, Milestone, NewMilestoneInput, PayPalMode, ScriptedResult, Submission } from "./types";
 
 export type { NewMilestoneInput };
 
@@ -107,6 +108,13 @@ const nowIso = () => new Date().toISOString();
 
 const passed = (evidence: string): ScriptedResult => ({ verdict: "pass", confidence: 0.9, evidence, reason: "Meets the criterion." });
 const scripted = (c: Criterion, attempt: number) => (attempt === 1 ? c.demo?.first : c.demo?.afterFix) ?? passed("Checked");
+
+/** The prototype matches the brief to a template, with a pause that feels like drafting. */
+export async function draftCriteria(brief: string): Promise<CriteriaDraft> {
+  await new Promise((resolve) => setTimeout(resolve, 1200));
+  const s = suggestCriteria(brief);
+  return { source: "prototype", template: s.kind, criteria: s.criteria };
+}
 
 export async function createMilestone(input: NewMilestoneInput, walkthrough = false): Promise<string> {
   const s = load();

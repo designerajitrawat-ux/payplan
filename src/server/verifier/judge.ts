@@ -1,6 +1,7 @@
 // The rubric judge: decides one criterion from collected evidence.
 
 import { z } from "zod";
+import { chatJson, llmFromEnv, type LlmConfig } from "../llm";
 import { describeEvidence, looksLikeSteering, type Evidence, type FormTest, type PageSpeed } from "./evidence";
 
 export type JudgeInput = {
@@ -82,45 +83,18 @@ function guard(input: JudgeInput, v: Verdict): Verdict {
 }
 
 /** Any OpenAI-compatible chat API. The default setup is Gemini through Google AI Studio. */
-export function createLlmJudge(config: { baseUrl: string; apiKey: string; model: string; fetch?: typeof fetch }): Judge {
-  const doFetch = config.fetch ?? fetch;
-  const url = `${config.baseUrl.replace(/\/$/, "")}/chat/completions`;
+export function createLlmJudge(config: LlmConfig): Judge {
   return {
     model: config.model,
     async judge(input) {
-      try {
-        const res = await doFetch(url, {
-          method: "POST",
-          headers: { Authorization: `Bearer ${config.apiKey}`, "Content-Type": "application/json" },
-          signal: AbortSignal.timeout(45_000),
-          body: JSON.stringify({
-            model: config.model,
-            temperature: 0,
-            messages: [
-              { role: "system", content: SYSTEM_PROMPT },
-              {
-                role: "user",
-                content: input.image
-                  ? [
-                      { type: "text", text: userPrompt(input) },
-                      { type: "image_url", image_url: { url: input.image } },
-                    ]
-                  : userPrompt(input),
-              },
-            ],
-            response_format: { type: "json_schema", json_schema: { name: "verdict", strict: true, schema: JSON_SCHEMA } },
-          }),
-        });
-        if (!res.ok) return unavailable(`The AI service answered ${res.status}`);
-        const body = (await res.json()) as { choices?: { message?: { content?: string } }[] };
-        const content = body.choices?.[0]?.message?.content ?? "";
-        const json = content.match(/\{[\s\S]*\}/)?.[0];
-        const parsed = json ? verdictSchema.safeParse(JSON.parse(json)) : undefined;
-        if (!parsed?.success) return unavailable("The AI answer was not in the expected format");
-        return guard(input, parsed.data);
-      } catch {
-        return unavailable("The AI service did not answer");
-      }
+      const user = input.image
+        ? [
+            { type: "text" as const, text: userPrompt(input) },
+            { type: "image_url" as const, image_url: { url: input.image } },
+          ]
+        : userPrompt(input);
+      const answer = await chatJson(config, { system: SYSTEM_PROMPT, user, schemaName: "verdict", jsonSchema: JSON_SCHEMA, parse: verdictSchema });
+      return answer.ok ? guard(input, answer.data) : unavailable(answer.reason);
     },
   };
 }
@@ -174,8 +148,6 @@ export function createRulesJudge(): Judge {
 }
 
 export function judgeFromEnv(env: Record<string, string | undefined> = process.env): Judge {
-  if (env.LLM_API_KEY) {
-    return createLlmJudge({ apiKey: env.LLM_API_KEY, baseUrl: env.LLM_BASE_URL || "https://generativelanguage.googleapis.com/v1beta/openai/", model: env.LLM_MODEL || "gemini-2.5-flash" });
-  }
-  return createRulesJudge();
+  const llm = llmFromEnv(env);
+  return llm ? createLlmJudge(llm) : createRulesJudge();
 }
