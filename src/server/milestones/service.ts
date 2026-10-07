@@ -218,6 +218,24 @@ export function createMilestoneService(deps: { db: Db; paypal: PaymentGateway; n
     return transition(tx, id, action, from, { status: "released" });
   }
 
+  async function views(rows: t.MilestoneRow[]) {
+    const ids = rows.map((m) => m.id);
+    if (!ids.length) return [];
+    const [crit, subs, reps, mv, decisions, timeline] = await Promise.all([
+      db.select().from(t.criteria).where(inArray(t.criteria.milestoneId, ids)).orderBy(asc(t.criteria.position)),
+      db.select().from(t.submissions).where(inArray(t.submissions.milestoneId, ids)).orderBy(asc(t.submissions.attempt)),
+      db.select().from(t.reports).where(inArray(t.reports.milestoneId, ids)).orderBy(asc(t.reports.attempt)),
+      db.select().from(t.moneyMoves).where(inArray(t.moneyMoves.milestoneId, ids)).orderBy(asc(t.moneyMoves.id)),
+      db.select().from(t.agentDecisions).where(inArray(t.agentDecisions.milestoneId, ids)).orderBy(asc(t.agentDecisions.id)),
+      db.select().from(t.events).where(inArray(t.events.milestoneId, ids)).orderBy(asc(t.events.at), asc(t.events.id)),
+    ]);
+    const of = <T extends { milestoneId: string }>(list: T[], id: string) => list.filter((x) => x.milestoneId === id);
+    return rows.map((m) => {
+      const moneyMoves = of(mv, m.id);
+      return { ...m, criteria: of(crit, m.id), submissions: of(subs, m.id), reports: of(reps, m.id), moneyMoves, agentDecisions: of(decisions, m.id), events: of(timeline, m.id), totals: moneyTotals(moneyMoves) };
+    });
+  }
+
   const service = {
     async createMilestone(input: NewMilestone): Promise<string> {
       validate(input);
@@ -388,6 +406,20 @@ export function createMilestoneService(deps: { db: Db; paypal: PaymentGateway; n
       return captureDue(id, "auto-release", ["awaiting_decision"], "system", "Review window ended without a reply; verified share released");
     },
 
+    /**
+     * Demo only: ends the review or fix window now, so a judge can see what happens at the end
+     * without waiting days. The timer rules that follow are the real ones.
+     */
+    async endWindowNow(id: string, which: "review" | "fix") {
+      const row = await db.transaction(async (tx) => {
+        const patch = which === "review" ? { decisionDueAt: now() } : { fixDueAt: now() };
+        const row = await transition(tx, id, `end the ${which} window`, [which === "review" ? "awaiting_decision" : "fix_window"], patch);
+        await log(tx, id, "system", "window_ended_early", { which, demo: true });
+        return row;
+      });
+      return which === "review" ? service.autoRelease(row.id) : service.voidRemainder(row.id);
+    },
+
     async openAppeal(id: string, reason: string) {
       if (reason.trim().length < 10) throw new ValidationError("Say in a sentence what is wrong with the report");
       return db.transaction(async (tx) => {
@@ -451,16 +483,13 @@ export function createMilestoneService(deps: { db: Db; paypal: PaymentGateway; n
 
     /** Everything a page needs about one milestone, in one call. */
     async getMilestone(id: string) {
-      const m = await find(db, id);
-      const [crit, subs, reps, mv, decisions, timeline] = await Promise.all([
-        criteriaOf(db, id),
-        db.select().from(t.submissions).where(eq(t.submissions.milestoneId, id)).orderBy(asc(t.submissions.attempt)),
-        db.select().from(t.reports).where(eq(t.reports.milestoneId, id)).orderBy(asc(t.reports.attempt)),
-        moves(db, id),
-        db.select().from(t.agentDecisions).where(eq(t.agentDecisions.milestoneId, id)).orderBy(asc(t.agentDecisions.id)),
-        db.select().from(t.events).where(eq(t.events.milestoneId, id)).orderBy(asc(t.events.at), asc(t.events.id)),
-      ]);
-      return { ...m, criteria: crit, submissions: subs, reports: reps, moneyMoves: mv, agentDecisions: decisions, events: timeline, totals: moneyTotals(mv) };
+      const [view] = await views([await find(db, id)]);
+      return view;
+    },
+
+    /** Full views for a workspace's dashboard, loaded with one query per table. */
+    async listMilestoneViews(workspaceId: string) {
+      return views(await service.listMilestones(workspaceId));
     },
 
     async listMilestones(workspaceId: string) {
@@ -490,6 +519,22 @@ export function createMilestoneService(deps: { db: Db; paypal: PaymentGateway; n
         return true;
       });
       return { matched: true as const, milestoneId: move.milestoneId, changed };
+    },
+
+    /** Adds a line to the milestone's timeline (the checker uses it for its live log). */
+    async addEvent(id: string, actor: Actor, type: string, detail: Record<string, unknown>) {
+      await log(db, id, actor, type, detail);
+    },
+
+    /** A fix was verified but its release did not finish (PayPal was down, say). Try the release again. */
+    async retryFixRelease(id: string) {
+      return captureDue(id, "release a verified fix", ["verifying"], "system", "Fix verified; the newly verified share is released as agreed");
+    },
+
+    /** Checks that started a while ago and never finished, for the timer job to pick up. */
+    async stuckVerifications(olderThanMs: number) {
+      const before = new Date(now().getTime() - olderThanMs);
+      return db.select({ id: t.milestones.id }).from(t.milestones).where(and(eq(t.milestones.status, "verifying"), lte(t.milestones.verifyStartedAt, before)));
     },
 
     /** Records something PayPal told us about a milestone (a dispute, a refund, a hold that expired). */

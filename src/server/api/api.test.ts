@@ -3,6 +3,7 @@ import type { Services } from "../app";
 import { createPgliteDb } from "../db/client";
 import { createMilestoneService, InvalidStateError, NotFoundError, ValidationError } from "../milestones/service";
 import { createSimulatedPayPal } from "../paypal/simulated";
+import { createRulesJudge } from "../verifier/judge";
 import { createMilestoneFor, getMilestoneFor, runAction } from "./actions";
 import { handleWebhook } from "./webhook";
 
@@ -10,7 +11,7 @@ let s: Services;
 beforeAll(async () => {
   const db = await createPgliteDb();
   const simulated = createSimulatedPayPal();
-  s = { db, database: "embedded", paypalMode: "simulated", paypal: simulated.gateway, simulated, milestones: createMilestoneService({ db, paypal: simulated.gateway }) };
+  s = { db, database: "embedded", paypalMode: "simulated", paypal: simulated.gateway, simulated, milestones: createMilestoneService({ db, paypal: simulated.gateway }), judge: createRulesJudge(), demoControls: true };
 }, 30_000);
 
 const body = {

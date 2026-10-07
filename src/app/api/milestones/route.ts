@@ -1,13 +1,13 @@
 import { NextResponse } from "next/server";
-import { createMilestoneFor } from "@/server/api/actions";
+import { createMilestoneFor, publicView } from "@/server/api/actions";
 import { errorResponse, readJson, workspaceId } from "@/server/api/http";
 import { services } from "@/server/app";
 
 export async function GET() {
   try {
     const s = await services();
-    const rows = await s.milestones.listMilestones(await workspaceId());
-    return NextResponse.json({ milestones: rows.map(({ workspaceId: _hidden, ...m }) => (void _hidden, m)) });
+    const views = await s.milestones.listMilestoneViews(await workspaceId());
+    return NextResponse.json({ milestones: views.map(publicView), paypal: s.paypalMode });
   } catch (error) {
     return errorResponse(error);
   }

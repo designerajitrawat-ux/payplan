@@ -2,6 +2,7 @@ import { timingSafeEqual } from "node:crypto";
 import { NextResponse } from "next/server";
 import { errorResponse } from "@/server/api/http";
 import { services } from "@/server/app";
+import { runTimers } from "@/server/jobs";
 
 function authorized(request: Request) {
   const secret = process.env.CRON_SECRET;
@@ -16,7 +17,7 @@ async function run(request: Request) {
   if (!authorized(request)) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   try {
     const s = await services();
-    const jobs = await s.milestones.runDueJobs();
+    const jobs = await runTimers(s);
     return NextResponse.json({ ranAt: new Date().toISOString(), jobs });
   } catch (error) {
     return errorResponse(error);

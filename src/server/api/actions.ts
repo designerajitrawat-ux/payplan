@@ -56,6 +56,7 @@ export const actionBody = z.discriminatedUnion("action", [
   z.object({ action: z.literal("withdraw_appeal") }),
   z.object({ action: z.literal("void") }),
   z.object({ action: z.literal("cancel") }),
+  z.object({ action: z.literal("demo_end_window"), which: z.enum(["review", "fix"]) }),
 ]);
 
 export const mandateBody = z.object({
@@ -145,6 +146,10 @@ export async function runAction(s: Services, workspaceId: string, id: string, bo
       break;
     case "cancel":
       await svc.cancel(id);
+      break;
+    case "demo_end_window":
+      if (!s.demoControls) throw new ValidationError("Demo time controls are switched off");
+      await svc.endWindowNow(id, input.which);
       break;
   }
   return { milestone: await getMilestoneFor(s, workspaceId, id), ...extra };
