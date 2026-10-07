@@ -33,6 +33,8 @@ export const milestones = pgTable(
   "milestones",
   {
     id: text("id").primaryKey(),
+    /** The browser workspace that created it. Until sign-in exists, a workspace can act as both sides. */
+    workspaceId: text("workspace_id").notNull(),
     /** Short number people can say out loud ("M-1051"). */
     number: serial("number").notNull().unique(),
     title: text("title").notNull(),
@@ -67,7 +69,7 @@ export const milestones = pgTable(
     /** Bumped on every change; used to reject stale writes. */
     version: integer("version").notNull().default(0),
   },
-  (t) => [index("milestones_status_idx").on(t.status), index("milestones_client_email_idx").on(t.clientEmail), index("milestones_freelancer_email_idx").on(t.freelancerEmail)],
+  (t) => [index("milestones_workspace_idx").on(t.workspaceId), index("milestones_status_idx").on(t.status), index("milestones_client_email_idx").on(t.clientEmail), index("milestones_freelancer_email_idx").on(t.freelancerEmail)],
 );
 
 export const criteria = pgTable(
@@ -147,9 +149,10 @@ export const moneyMoves = pgTable(
   (t) => [index("money_moves_milestone_idx").on(t.milestoneId)],
 );
 
+/** What the client's AI agent may do. One per workspace; the PayPal hold stays the hard ceiling. */
 export const agentMandates = pgTable("agent_mandates", {
   id: serial("id").primaryKey(),
-  ownerEmail: text("owner_email").notNull().unique(),
+  workspaceId: text("workspace_id").notNull().unique(),
   ownerName: text("owner_name").notNull(),
   name: text("name").notNull(),
   perMilestoneLimitCents: integer("per_milestone_limit_cents").notNull(),

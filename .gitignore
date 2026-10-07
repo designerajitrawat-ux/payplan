@@ -46,3 +46,7 @@ next-env.d.ts
 
 # embedded Postgres for local runs
 /.data/
+
+# files next dev can generate for coding assistants
+/AGENTS.md
+/CLAUDE.md

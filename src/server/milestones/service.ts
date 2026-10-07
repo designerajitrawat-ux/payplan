@@ -47,6 +47,7 @@ export class ValidationError extends Error {}
 export type NewCriterion = { title: string; weight: number; mustPass: boolean; evidence: t.CriterionRow["evidence"]; check: t.CriterionRow["check"] };
 
 export type NewMilestone = {
+  workspaceId: string;
   title: string;
   brief?: string;
   clientName: string;
@@ -235,6 +236,7 @@ export function createMilestoneService(deps: { db: Db; paypal: PaymentGateway; n
       await db.transaction(async (tx) => {
         await tx.insert(t.milestones).values({
           id,
+          workspaceId: input.workspaceId,
           title: spec.title,
           brief: spec.brief,
           clientName: spec.client.name,
@@ -362,7 +364,7 @@ export function createMilestoneService(deps: { db: Db; paypal: PaymentGateway; n
         if (m.status !== "awaiting_decision" || m.approval !== "agent") throw new InvalidStateError(id, "let the agent decide", m.status);
         const report = await latestReport(tx, id);
         if (!report) throw new InvalidStateError(id, "let the agent decide", m.status);
-        const [mandate] = await tx.select().from(t.agentMandates).where(eq(t.agentMandates.ownerEmail, m.clientEmail));
+        const [mandate] = await tx.select().from(t.agentMandates).where(eq(t.agentMandates.workspaceId, m.workspaceId));
         const authorized = moneyTotals(await moves(tx, id)).authorized;
         const review = mandate
           ? agentReview(await criteriaOf(tx, id), report.results, authorized, mandate)
@@ -436,9 +438,14 @@ export function createMilestoneService(deps: { db: Db; paypal: PaymentGateway; n
     async upsertMandate(input: Omit<typeof t.agentMandates.$inferInsert, "id" | "updatedAt">) {
       const [row] = await db
         .insert(t.agentMandates)
-        .values({ ...input, ownerEmail: input.ownerEmail.toLowerCase(), updatedAt: now() })
-        .onConflictDoUpdate({ target: t.agentMandates.ownerEmail, set: { ...input, ownerEmail: input.ownerEmail.toLowerCase(), updatedAt: now() } })
+        .values({ ...input, updatedAt: now() })
+        .onConflictDoUpdate({ target: t.agentMandates.workspaceId, set: { ...input, updatedAt: now() } })
         .returning();
+      return row;
+    },
+
+    async getMandate(workspaceId: string) {
+      const [row] = await db.select().from(t.agentMandates).where(eq(t.agentMandates.workspaceId, workspaceId));
       return row;
     },
 
@@ -456,10 +463,53 @@ export function createMilestoneService(deps: { db: Db; paypal: PaymentGateway; n
       return { ...m, criteria: crit, submissions: subs, reports: reps, moneyMoves: mv, agentDecisions: decisions, events: timeline, totals: moneyTotals(mv) };
     },
 
-    async listMilestones(filter: { email?: string } = {}) {
-      const email = filter.email?.toLowerCase();
-      const where = email ? sql`${t.milestones.clientEmail} = ${email} or ${t.milestones.freelancerEmail} = ${email}` : undefined;
-      return db.select().from(t.milestones).where(where).orderBy(desc(t.milestones.createdAt));
+    async listMilestones(workspaceId: string) {
+      return db.select().from(t.milestones).where(eq(t.milestones.workspaceId, workspaceId)).orderBy(desc(t.milestones.createdAt), desc(t.milestones.number));
+    },
+
+    /**
+     * Applies a verified PayPal webhook about a capture we asked for. If our own request lost its
+     * reply, this completes the move and settles the milestone without waiting for a retry.
+     */
+    async reconcileCapture(input: { invoiceId: string; captureId: string; status: "COMPLETED" | "DECLINED" | "DENIED" | "FAILED" }) {
+      const [move] = await db.select().from(t.moneyMoves).where(and(eq(t.moneyMoves.invoiceId, input.invoiceId), eq(t.moneyMoves.kind, "capture")));
+      if (!move) return { matched: false as const };
+      if (input.status !== "COMPLETED") {
+        await markFailed(move.id, move.milestoneId, new Error(`PayPal reported the capture as ${input.status}`));
+        return { matched: true as const, milestoneId: move.milestoneId, changed: move.status === "pending" };
+      }
+      const changed = await db.transaction(async (tx) => {
+        const [done] = await tx
+          .update(t.moneyMoves)
+          .set({ status: "completed", paypalId: input.captureId, completedAt: now() })
+          .where(and(eq(t.moneyMoves.id, move.id), eq(t.moneyMoves.status, "pending")))
+          .returning();
+        if (!done) return false;
+        await log(tx, move.milestoneId, "paypal", "released", { amountCents: move.amountCents, captureId: input.captureId, note: move.note, via: "webhook" });
+        await settle(tx, move.milestoneId, "reconcile a capture", ["awaiting_decision", "verifying"]);
+        return true;
+      });
+      return { matched: true as const, milestoneId: move.milestoneId, changed };
+    },
+
+    /** Records something PayPal told us about a milestone (a dispute, a refund, a hold that expired). */
+    async notePayPalEvent(milestoneId: string, type: string, detail: Record<string, unknown>) {
+      const [m] = await db.select({ id: t.milestones.id }).from(t.milestones).where(eq(t.milestones.id, milestoneId));
+      if (!m) return false;
+      await log(db, milestoneId, "paypal", type, detail);
+      return true;
+    },
+
+    async findByPayPalId(input: { authorizationId?: string; captureId?: string }) {
+      if (input.authorizationId) {
+        const [m] = await db.select({ id: t.milestones.id }).from(t.milestones).where(eq(t.milestones.paypalAuthorizationId, input.authorizationId));
+        if (m) return m.id;
+      }
+      if (input.captureId) {
+        const [mv] = await db.select({ id: t.moneyMoves.milestoneId }).from(t.moneyMoves).where(eq(t.moneyMoves.paypalId, input.captureId));
+        if (mv) return mv.id;
+      }
+      return undefined;
     },
 
     /**

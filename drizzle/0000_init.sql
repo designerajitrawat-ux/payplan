@@ -18,7 +18,7 @@ CREATE TABLE "agent_decisions" (
 --> statement-breakpoint
 CREATE TABLE "agent_mandates" (
 	"id" serial PRIMARY KEY NOT NULL,
-	"owner_email" text NOT NULL,
+	"workspace_id" text NOT NULL,
 	"owner_name" text NOT NULL,
 	"name" text NOT NULL,
 	"per_milestone_limit_cents" integer NOT NULL,
@@ -26,7 +26,7 @@ CREATE TABLE "agent_mandates" (
 	"release_verified" boolean DEFAULT true NOT NULL,
 	"fund_milestones" boolean DEFAULT false NOT NULL,
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL,
-	CONSTRAINT "agent_mandates_owner_email_unique" UNIQUE("owner_email")
+	CONSTRAINT "agent_mandates_workspace_id_unique" UNIQUE("workspace_id")
 );
 --> statement-breakpoint
 CREATE TABLE "criteria" (
@@ -51,6 +51,7 @@ CREATE TABLE "events" (
 --> statement-breakpoint
 CREATE TABLE "milestones" (
 	"id" text PRIMARY KEY NOT NULL,
+	"workspace_id" text NOT NULL,
 	"number" serial NOT NULL,
 	"title" text NOT NULL,
 	"brief" text DEFAULT '' NOT NULL,
@@ -142,6 +143,7 @@ ALTER TABLE "submissions" ADD CONSTRAINT "submissions_milestone_id_milestones_id
 CREATE INDEX "agent_decisions_milestone_idx" ON "agent_decisions" USING btree ("milestone_id");--> statement-breakpoint
 CREATE UNIQUE INDEX "criteria_milestone_position_idx" ON "criteria" USING btree ("milestone_id","position");--> statement-breakpoint
 CREATE INDEX "events_milestone_at_idx" ON "events" USING btree ("milestone_id","at");--> statement-breakpoint
+CREATE INDEX "milestones_workspace_idx" ON "milestones" USING btree ("workspace_id");--> statement-breakpoint
 CREATE INDEX "milestones_status_idx" ON "milestones" USING btree ("status");--> statement-breakpoint
 CREATE INDEX "milestones_client_email_idx" ON "milestones" USING btree ("client_email");--> statement-breakpoint
 CREATE INDEX "milestones_freelancer_email_idx" ON "milestones" USING btree ("freelancer_email");--> statement-breakpoint

@@ -1,5 +1,5 @@
 {
-  "id": "d1af38c2-09de-4def-953d-14d8ce3dc983",
+  "id": "b67132d0-847a-4808-9b62-f4193f5387e1",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -100,8 +100,8 @@
           "primaryKey": true,
           "notNull": true
         },
-        "owner_email": {
-          "name": "owner_email",
+        "workspace_id": {
+          "name": "workspace_id",
           "type": "text",
           "primaryKey": false,
           "notNull": true
@@ -156,11 +156,11 @@
       "foreignKeys": {},
       "compositePrimaryKeys": {},
       "uniqueConstraints": {
-        "agent_mandates_owner_email_unique": {
-          "name": "agent_mandates_owner_email_unique",
+        "agent_mandates_workspace_id_unique": {
+          "name": "agent_mandates_workspace_id_unique",
           "nullsNotDistinct": false,
           "columns": [
-            "owner_email"
+            "workspace_id"
           ]
         }
       },
@@ -365,6 +365,12 @@
           "primaryKey": true,
           "notNull": true
         },
+        "workspace_id": {
+          "name": "workspace_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
         "number": {
           "name": "number",
           "type": "serial",
@@ -553,6 +559,21 @@
         }
       },
       "indexes": {
+        "milestones_workspace_idx": {
+          "name": "milestones_workspace_idx",
+          "columns": [
+            {
+              "expression": "workspace_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
         "milestones_status_idx": {
           "name": "milestones_status_idx",
           "columns": [

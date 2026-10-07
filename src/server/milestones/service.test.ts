@@ -24,6 +24,7 @@ let n = 0;
 function landingPage(overrides: Partial<NewMilestone> = {}): NewMilestone {
   n++;
   return {
+    workspaceId: `ws-${n}`,
     title: "Landing page for Northwind",
     clientName: "Sam Carter",
     clientEmail: `sam${n}@northwind.test`,
@@ -213,7 +214,7 @@ describe("the client's agent", () => {
   it("releases inside its mandate", async () => {
     const ctx = setup();
     const input = landingPage();
-    await ctx.svc.upsertMandate({ ownerEmail: input.clientEmail, ownerName: "Sam Carter", name: "Northwind buying agent", perMilestoneLimitCents: 100000, minConfidence: 0.85, releaseVerified: true, fundMilestones: true });
+    await ctx.svc.upsertMandate({ workspaceId: input.workspaceId, ownerName: "Sam Carter", name: "Northwind buying agent", perMilestoneLimitCents: 100000, minConfidence: 0.85, releaseVerified: true, fundMilestones: true });
     const id = await fundedAndSubmitted(ctx, input, "agent");
     await ctx.svc.recordReport(id, { model: "test", results: [result(c(id, 1), "pass"), result(c(id, 2), "pass"), result(c(id, 3), "fail"), result(c(id, 4), "pass", 0.9)] });
     const decision = await ctx.svc.agentDecide(id);
@@ -228,7 +229,7 @@ describe("the client's agent", () => {
   it("hands the decision back when a limit is not met, and cannot decide again", async () => {
     const ctx = setup();
     const input = landingPage();
-    await ctx.svc.upsertMandate({ ownerEmail: input.clientEmail, ownerName: "Sam", name: "Agent", perMilestoneLimitCents: 50000, minConfidence: 0.85, releaseVerified: true, fundMilestones: false });
+    await ctx.svc.upsertMandate({ workspaceId: input.workspaceId, ownerName: "Sam", name: "Agent", perMilestoneLimitCents: 50000, minConfidence: 0.85, releaseVerified: true, fundMilestones: false });
     const id = await fundedAndSubmitted(ctx, input, "agent");
     await ctx.svc.recordReport(id, { model: "test", results: [1, 2, 3, 4].map((i) => result(c(id, i), "pass")) });
     const decision = await ctx.svc.agentDecide(id);
@@ -288,11 +289,29 @@ describe("timers, appeals and guards", () => {
     expect((await svc.getMilestone(id)).status).toBe("closed");
   });
 
-  it("lists milestones for either side", async () => {
+  it("lists only the workspace's milestones, newest first", async () => {
     const { svc } = setup();
     const input = landingPage();
-    const id = await svc.createMilestone(input);
-    expect((await svc.listMilestones({ email: input.clientEmail.toUpperCase() })).map((m) => m.id)).toEqual([id]);
-    expect((await svc.listMilestones({ email: "riya@example.in" })).length).toBeGreaterThan(1);
+    const first = await svc.createMilestone(input);
+    const second = await svc.createMilestone(input);
+    await svc.createMilestone(landingPage());
+    expect((await svc.listMilestones(input.workspaceId)).map((m) => m.id)).toEqual([second, first]);
+  });
+
+  it("completes a capture from PayPal's webhook when our own reply was lost", async () => {
+    const ctx = setup();
+    const id = await fundedAndSubmitted(ctx);
+    await ctx.svc.recordReport(id, { model: "test", results: [1, 2, 3, 4].map((i) => result(c(id, i), "pass")) });
+    ctx.pp.failNext("captureAuthorization", new TypeError("fetch failed"), true);
+    await expect(ctx.svc.acceptRelease(id)).rejects.toThrow("fetch failed");
+
+    const res = await ctx.svc.reconcileCapture({ invoiceId: `${id}-1`, captureId: "CAP-FROM-WEBHOOK", status: "COMPLETED" });
+    expect(res).toEqual({ matched: true, milestoneId: id, changed: true });
+    const view = await ctx.svc.getMilestone(id);
+    expect(view.status).toBe("released");
+    expect(view.moneyMoves.at(-1)).toMatchObject({ status: "completed", paypalId: "CAP-FROM-WEBHOOK" });
+    // A redelivered webhook changes nothing.
+    expect(await ctx.svc.reconcileCapture({ invoiceId: `${id}-1`, captureId: "CAP-FROM-WEBHOOK", status: "COMPLETED" })).toMatchObject({ changed: false });
+    expect(await ctx.svc.findByPayPalId({ captureId: "CAP-FROM-WEBHOOK" })).toBe(id);
   });
 });
