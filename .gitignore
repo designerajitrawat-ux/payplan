@@ -50,3 +50,6 @@ next-env.d.ts
 # files next dev can generate for coding assistants
 /AGENTS.md
 /CLAUDE.md
+
+# local checker evaluation output
+/eval-results.md
