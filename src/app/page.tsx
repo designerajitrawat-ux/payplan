@@ -1,4 +1,5 @@
 import { stagger } from "@/lib/style";
+import { Journey } from "./journey";
 import { CtaLink, MiniVerifier, SpinSticker, TickSticker } from "./landing";
 import { Bento, InView, Marquee, ProductWindow, ScrollLit, StoryScroll, WordReveal } from "./landing-motion";
 
@@ -88,7 +89,11 @@ export default function Home() {
         </InView>
       </section>
 
-      <ProductWindow />
+      <Journey />
+
+      <div id="product" className="scroll-mt-16 pt-24">
+        <ProductWindow />
+      </div>
 
       <section className="mx-auto mt-20 max-w-6xl px-4 sm:px-6">
         <p className="text-center font-mono text-[11px] uppercase tracking-[0.12em] text-dim">Every money move is a PayPal API call</p>
