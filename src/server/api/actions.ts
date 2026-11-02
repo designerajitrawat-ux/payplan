@@ -50,6 +50,10 @@ export const actionBody = z.discriminatedUnion("action", [
   z.object({ action: z.literal("submit"), url: optionalUrl, prLink: optionalUrl, files: z.array(z.string().max(200)).max(20).optional(), note: z.string().max(2000).optional() }),
   /** Stands in for the AI checker until it is wired (plan T1.6). */
   z.object({ action: z.literal("record_verdict"), results: z.array(verdict).min(1).max(10), model: z.string().max(80).default("manual") }),
+  z.object({
+    action: z.literal("resolve_review"),
+    answers: z.array(z.object({ criterionId: z.string().min(1).max(100), verdict: z.enum(["pass", "fail"]), note: z.string().max(500).default("") })).min(1).max(10),
+  }),
   z.object({ action: z.literal("accept") }),
   z.object({ action: z.literal("agent_decide") }),
   z.object({ action: z.literal("appeal"), reason: z.string().trim().min(10).max(1000) }),
@@ -126,6 +130,9 @@ export async function runAction(s: Services, workspaceId: string, id: string, bo
       break;
     case "record_verdict":
       await svc.recordReport(id, { results: input.results, model: input.model });
+      break;
+    case "resolve_review":
+      await svc.resolveReview(id, input.answers);
       break;
     case "accept":
       await svc.acceptRelease(id);

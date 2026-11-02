@@ -343,6 +343,11 @@ export function resumeBackgroundWork(milestones: Milestone[]) {
   void milestones;
 }
 
+/** The client answers checks the AI handed to a person: passed, or not met. */
+export async function resolveReview(id: string, answers: { criterionId: string; verdict: "pass" | "fail"; note: string }[]) {
+  await act(id, { action: "resolve_review", answers });
+}
+
 export async function acceptRelease(id: string) {
   await act(id, { action: "accept" });
 }

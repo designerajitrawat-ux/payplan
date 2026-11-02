@@ -1,7 +1,7 @@
 "use client";
 
 import { useSyncExternalStore } from "react";
-import { agentReview, ledgerTotals, releasableAmount } from "./decision";
+import { agentReview, ledgerTotals, releasableAmount, withResolutions } from "./decision";
 import { fakePayPalId, money, previewHash, shortHash } from "./format";
 import { defaultMandate, makeSeed } from "./seed";
 import { suggestCriteria } from "./criteria-presets";
@@ -289,6 +289,16 @@ function captureVerified(m: Milestone, note: string): Milestone {
     status: held > 0 ? "fix_window" : "released",
     fixDueAt: held > 0 ? m.fixDueAt ?? new Date(Date.now() + m.fixWindowHours * HOUR).toISOString() : m.fixDueAt,
   };
+}
+
+/** The client answers checks the AI handed to a person: passed, or not met. */
+export async function resolveReview(id: string, answers: { criterionId: string; verdict: "pass" | "fail"; note: string }[]) {
+  update(id, (m) => {
+    const report = m.reports.at(-1);
+    if (!report || m.status !== "awaiting_decision") return m;
+    const results = withResolutions(report.results, answers.map((a) => ({ ...a, by: m.clientName })));
+    return { ...m, reports: [...m.reports.slice(0, -1), { ...report, results }] };
+  });
 }
 
 export async function acceptRelease(id: string) {

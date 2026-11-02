@@ -9,6 +9,7 @@ import { randomBytes } from "node:crypto";
 import { and, asc, desc, eq, inArray, lte, sql } from "drizzle-orm";
 import type { Db } from "../db/client";
 import * as t from "../db/schema";
+import { withResolutions, type ReviewResolution } from "@/lib/decision";
 import { agentReview, canonicalJson, moneyTotals, releasableCents, sha256 } from "../domain/rules";
 import { PayPalError, type PayPalClient } from "../paypal/client";
 import { memorySigner, verifySignature, type Signer } from "../signing";
@@ -82,6 +83,20 @@ function validate(input: NewMilestone) {
 
 const newId = () => `m_${randomBytes(5).toString("hex")}`;
 
+/** Event type for the client's answer to a "needs a person" verdict. */
+const RESOLVED = "review_resolved";
+
+/** The client's latest answer per criterion on one report, read from the event log. */
+function resolutionsFrom(events: Pick<t.EventRow, "type" | "detail">[], reportAttempt: number): ReviewResolution[] {
+  const latest = new Map<string, ReviewResolution>();
+  for (const e of events) {
+    if (e.type !== RESOLVED || e.detail.reportAttempt !== reportAttempt) continue;
+    const d = e.detail as { criterionId: string; verdict: "pass" | "fail"; note?: string; by?: string };
+    latest.set(d.criterionId, { criterionId: d.criterionId, verdict: d.verdict, note: d.note ?? "", by: d.by ?? "The client" });
+  }
+  return [...latest.values()];
+}
+
 function errorJson(error: unknown): t.PayPalErrorJson {
   if (error instanceof PayPalError) return { status: error.status, name: error.name, issue: error.issue, debugId: error.debugId, message: error.message };
   return { message: error instanceof Error ? error.message : String(error) };
@@ -122,9 +137,15 @@ export function createMilestoneService(deps: { db: Db; paypal: PaymentGateway; n
     return tx.select().from(t.moneyMoves).where(eq(t.moneyMoves.milestoneId, id)).orderBy(asc(t.moneyMoves.id));
   }
 
-  async function latestReport(tx: Tx | Db, id: string) {
+  /**
+   * The latest report as money decisions see it: the checker's verdicts, with the client's answers
+   * to any "needs a person" results. `raw` gives the checker's verdicts alone.
+   */
+  async function latestReport(tx: Tx | Db, id: string, raw = false) {
     const [report] = await tx.select().from(t.reports).where(eq(t.reports.milestoneId, id)).orderBy(desc(t.reports.attempt)).limit(1);
-    return report;
+    if (!report || raw) return report;
+    const answers = await tx.select().from(t.events).where(and(eq(t.events.milestoneId, id), eq(t.events.type, RESOLVED))).orderBy(asc(t.events.id));
+    return { ...report, results: withResolutions(report.results, resolutionsFrom(answers, report.attempt)) };
   }
 
   async function criteriaOf(tx: Tx | Db, id: string) {
@@ -234,7 +255,10 @@ export function createMilestoneService(deps: { db: Db; paypal: PaymentGateway; n
     const of = <T extends { milestoneId: string }>(list: T[], id: string) => list.filter((x) => x.milestoneId === id);
     return rows.map((m) => {
       const moneyMoves = of(mv, m.id);
-      return { ...m, criteria: of(crit, m.id), submissions: of(subs, m.id), reports: of(reps, m.id), moneyMoves, agentDecisions: of(decisions, m.id), events: of(timeline, m.id), totals: moneyTotals(moneyMoves) };
+      const events = of(timeline, m.id);
+      // Screens and the next check see the client's answers on the latest report, like the money rules do.
+      const reports = of(reps, m.id).map((r, i, all) => (i === all.length - 1 ? { ...r, results: withResolutions(r.results, resolutionsFrom(events, r.attempt)) } : r));
+      return { ...m, criteria: of(crit, m.id), submissions: of(subs, m.id), reports, moneyMoves, agentDecisions: of(decisions, m.id), events, totals: moneyTotals(moneyMoves) };
     });
   }
 
@@ -386,6 +410,26 @@ export function createMilestoneService(deps: { db: Db; paypal: PaymentGateway; n
       });
       if (report.attempt > 1) await captureDue(id, "release a verified fix", ["verifying"], "system", "Fix verified; the newly verified share is released as agreed");
       return report;
+    },
+
+    /**
+     * The client answers "needs a person" verdicts on the latest report: passed, or not met, with a
+     * note. The signed report keeps the checker's own verdicts; the answers are logged next to it.
+     */
+    async resolveReview(id: string, answers: { criterionId: string; verdict: "pass" | "fail"; note: string }[]) {
+      return db.transaction(async (tx) => {
+        const m = await find(tx, id, true);
+        if (m.status !== "awaiting_decision") throw new InvalidStateError(id, "answer a check", m.status);
+        const report = await latestReport(tx, id, true);
+        if (!report) throw new InvalidStateError(id, "answer a check", m.status);
+        for (const a of answers) {
+          const result = report.results.find((r) => r.criterionId === a.criterionId);
+          if (!result) throw new ValidationError("That criterion is not part of this milestone");
+          if (result.verdict !== "review") throw new ValidationError("Only results that need a person can be answered; the checker already decided this one");
+          await log(tx, id, "client", RESOLVED, { criterionId: a.criterionId, verdict: a.verdict, note: a.note.trim(), reportAttempt: report.attempt, by: m.clientName });
+        }
+        return find(tx, id);
+      });
     },
 
     async acceptRelease(id: string) {

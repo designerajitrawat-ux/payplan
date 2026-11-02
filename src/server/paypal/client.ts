@@ -176,9 +176,16 @@ export function createPayPalClient(config: PayPalConfig) {
               ...(input.payeeMerchantId ? { payee: { merchant_id: input.payeeMerchantId } } : {}),
             },
           ],
-          ...(input.returnUrl
-            ? { payment_source: { paypal: { experience_context: { return_url: input.returnUrl, cancel_url: input.cancelUrl ?? input.returnUrl, user_action: "CONTINUE", shipping_preference: "NO_SHIPPING" } } } }
-            : {}),
+          // "Continue", not "Pay Now": approving only places a hold. No shipping for a service.
+          payment_source: {
+            paypal: {
+              experience_context: {
+                user_action: "CONTINUE",
+                shipping_preference: "NO_SHIPPING",
+                ...(input.returnUrl ? { return_url: input.returnUrl, cancel_url: input.cancelUrl ?? input.returnUrl } : {}),
+              },
+            },
+          },
         },
       });
       return { id: order.id, status: order.status, approveUrl: findLink(order.links, "payer-action", "approve") };

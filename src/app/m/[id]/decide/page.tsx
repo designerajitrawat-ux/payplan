@@ -13,7 +13,7 @@ import { useAction } from "@/components/use-action";
 import { Arrow, Avatar, Button, ButtonLink, Chip, Eyebrow, Field, MoneyBar, Panel, RoleChip, inputClass } from "@/components/ui";
 import { agentReview, ledgerTotals, releasableAmount } from "@/lib/decision";
 import { money } from "@/lib/format";
-import { acceptRelease, agentDecide, endReviewWindow, openAppeal, setApproval, useDemoControls, useMandate, withdrawAppeal } from "@/lib/store";
+import { acceptRelease, agentDecide, endReviewWindow, openAppeal, resolveReview, setApproval, useDemoControls, useMandate, withdrawAppeal } from "@/lib/store";
 import { stagger } from "@/lib/style";
 import type { AgentCheck, Milestone } from "@/lib/types";
 
@@ -147,6 +147,56 @@ function AgentDecision({ m }: { m: Milestone }) {
   );
 }
 
+/** Checks the AI could not settle come to the client, who says passed or not met, with an optional note. */
+function NeedsYourCheck({ m }: { m: Milestone }) {
+  const [notes, setNotes] = useState<Record<string, string>>({});
+  const { pending, run } = useAction();
+  const open = m.reports.at(-1)?.results.filter((r) => r.verdict === "review") ?? [];
+  if (!open.length) return null;
+  const titleOf = (id: string) => m.criteria.find((c) => c.id === id)?.title ?? id;
+
+  async function answer(criterionId: string, verdict: "pass" | "fail") {
+    if (await run(() => resolveReview(m.id, [{ criterionId, verdict, note: notes[criterionId] ?? "" }]), "Could not save your answer")) {
+      toast(verdict === "pass" ? "Marked as passed" : "Marked as not met", "The amount you can release is updated.", verdict === "pass" ? "good" : "warn");
+    }
+  }
+
+  return (
+    <Panel className="border-sun/25">
+      <p className="flex items-center gap-2 text-sm font-medium text-sun">
+        <span className="size-1.5 rounded-full bg-sun glow-dot" />
+        Needs your check
+      </p>
+      <h2 className="mt-2 font-display text-xl font-semibold tracking-tight text-ink">{open.length === 1 ? "The checker could not decide one criterion." : `The checker could not decide ${open.length} criteria.`}</h2>
+      <p className="mt-1 text-sm text-mute">Look at the delivered work yourself, then say whether it passed. Your answer is logged next to the signed report.</p>
+      <ul className="mt-5 space-y-3">
+        {open.map((r) => (
+          <li key={r.criterionId} className="rounded-2xl border border-white/[0.08] bg-white/[0.02] p-4">
+            <p className="text-sm font-medium text-ink">{titleOf(r.criterionId)}</p>
+            <p className="mt-1 text-xs leading-relaxed text-dim">Checker: {r.reason}</p>
+            <input
+              className={`${inputClass} mt-3`}
+              maxLength={500}
+              aria-label={`Note for: ${titleOf(r.criterionId)}`}
+              placeholder="Note (optional), for example: checked it on my phone"
+              value={notes[r.criterionId] ?? ""}
+              onChange={(e) => setNotes((n) => ({ ...n, [r.criterionId]: e.target.value }))}
+            />
+            <div className="mt-3 flex flex-wrap gap-2">
+              <Button size="sm" disabled={pending} onClick={() => void answer(r.criterionId, "pass")}>
+                It passed
+              </Button>
+              <Button size="sm" variant="danger" disabled={pending} onClick={() => void answer(r.criterionId, "fail")}>
+                Not met
+              </Button>
+            </div>
+          </li>
+        ))}
+      </ul>
+    </Panel>
+  );
+}
+
 function ManualDecision({ m }: { m: Milestone }) {
   const [appealing, setAppealing] = useState(false);
   const [reason, setReason] = useState("");
@@ -155,6 +205,10 @@ function ManualDecision({ m }: { m: Milestone }) {
   const releasable = report ? releasableAmount(m.criteria, report.results, totals.authorized || m.amount) : 0;
   const waiting = Math.max(0, Math.round(((totals.authorized || m.amount) - releasable) * 100) / 100);
   const failed = report?.results.filter((r) => r.verdict !== "pass").length ?? 0;
+  const verdictOf = (id: string) => report?.results.find((r) => r.criterionId === id)?.verdict;
+  const needsYou = report?.results.filter((r) => r.verdict === "review").length ?? 0;
+  const gateNeedsYou = m.criteria.some((c) => c.mustPass && verdictOf(c.id) === "review");
+  const gateFailed = m.criteria.some((c) => c.mustPass && verdictOf(c.id) === "fail");
   const names = partyNames(m);
   const handedBack = m.agentDecision?.outcome === "handed_to_client" ? m.agentDecision : undefined;
 
@@ -186,12 +240,17 @@ function ManualDecision({ m }: { m: Milestone }) {
             </ul>
           </Panel>
         ) : null}
+        <NeedsYourCheck m={m} />
         <Panel>
           <h2 className="font-display text-2xl font-semibold tracking-tight text-balance">Release <span className="font-sans">{money(releasable)}</span> for the criteria that passed?</h2>
           <p className="mt-2 text-sm leading-relaxed text-mute">
-            {failed > 0
-              ? `${failed === 1 ? "1 criterion was" : `${failed} criteria were`} not met. Their ${money(waiting)} stays on your PayPal as a hold while ${names.freelancer} fixes them, for up to ${m.fixWindowHours} hours.`
-              : "Every criterion passed. Releasing pays the full amount."}
+            {needsYou > 0
+              ? `${needsYou === 1 ? "1 criterion needs" : `${needsYou} criteria need`} your check above first.${gateNeedsYou ? " A must-pass criterion is among them, so nothing can be released until it passes." : ""}`
+              : gateFailed
+                ? `A must-pass criterion was not met, so nothing is released yet. The full ${money(waiting)} stays a hold on your PayPal while ${names.freelancer} fixes it, for up to ${m.fixWindowHours} hours.`
+                : failed > 0
+                  ? `${failed === 1 ? "1 criterion was" : `${failed} criteria were`} not met. Their ${money(waiting)} stays on your PayPal as a hold while ${names.freelancer} fixes them, for up to ${m.fixWindowHours} hours.`
+                  : "Every criterion passed. Releasing pays the full amount."}
           </p>
           <div className="mt-6">
             <MoneyBar ledger={m.ledger} amount={m.amount} />

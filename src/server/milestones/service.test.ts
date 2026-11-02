@@ -315,3 +315,43 @@ describe("timers, appeals and guards", () => {
     expect(await ctx.svc.findByPayPalId({ captureId: "CAP-FROM-WEBHOOK" })).toBe(id);
   });
 });
+
+describe("checks that need a person", () => {
+  it("lets the client answer them, keeps the signed report as the checker wrote it, and releases what passed", async () => {
+    const ctx = setup();
+    const { svc, pp } = ctx;
+    const id = await fundedAndSubmitted(ctx);
+    // The must-pass criterion (live site) needs a person, so nothing can be released yet.
+    await svc.recordReport(id, { model: "test", results: [result(c(id, 1), "review", 0.5), result(c(id, 2), "pass"), result(c(id, 3), "fail"), result(c(id, 4), "pass")] });
+    const signed = (await svc.getMilestone(id)).reports[0].payload;
+
+    await svc.resolveReview(id, [{ criterionId: c(id, 1), verdict: "pass", note: "Opened it on my phone; it loads" }]);
+    let view = await svc.getMilestone(id);
+    expect(view.reports.at(-1)!.results[0]).toMatchObject({ verdict: "pass", confidence: 1, evidence: "Checked by Sam Carter", reason: "Opened it on my phone; it loads" });
+    expect(view.reports[0].payload).toEqual(signed);
+    expect(view.events.at(-1)).toMatchObject({ type: "review_resolved", actor: "client" });
+
+    await svc.acceptRelease(id);
+    view = await svc.getMilestone(id);
+    expect(view.totals).toMatchObject({ captured: 60000, held: 20000 });
+    expect(pp.calls.filter((x) => x.method === "captureAuthorization")).toHaveLength(1);
+  });
+
+  it("releases nothing when the client finds a must-pass check not met", async () => {
+    const ctx = setup();
+    const id = await fundedAndSubmitted(ctx);
+    await ctx.svc.recordReport(id, { model: "test", results: [result(c(id, 1), "review", 0.5), result(c(id, 2), "pass"), result(c(id, 3), "pass"), result(c(id, 4), "pass")] });
+    await ctx.svc.resolveReview(id, [{ criterionId: c(id, 1), verdict: "fail", note: "" }]);
+    expect((await ctx.svc.getMilestone(id)).reports.at(-1)!.results[0]).toMatchObject({ verdict: "fail", reason: "Sam Carter checked this and found it not met." });
+    await ctx.svc.acceptRelease(id);
+    expect(ctx.pp.calls.filter((x) => x.method === "captureAuthorization")).toHaveLength(0);
+  });
+
+  it("does not let the client overrule a verdict the checker already decided", async () => {
+    const ctx = setup();
+    const id = await fundedAndSubmitted(ctx);
+    await ctx.svc.recordReport(id, { model: "test", results: [result(c(id, 1), "pass"), result(c(id, 2), "fail"), result(c(id, 3), "pass"), result(c(id, 4), "review", 0.4)] });
+    await expect(ctx.svc.resolveReview(id, [{ criterionId: c(id, 2), verdict: "pass", note: "" }])).rejects.toThrow(ValidationError);
+    await expect(ctx.svc.resolveReview(id, [{ criterionId: `${id}-c99`, verdict: "pass", note: "" }])).rejects.toThrow(ValidationError);
+  });
+});

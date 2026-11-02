@@ -17,6 +17,23 @@ export function releasableAmount(criteria: Criterion[], results: CriterionResult
   return Math.min(cents / 100, authorized);
 }
 
+/** A person's answer to a "needs a person" verdict. */
+export type ReviewResolution = { criterionId: string; verdict: "pass" | "fail"; note: string; by: string };
+
+/**
+ * Applies a person's answers to the verdicts that needed one. The checker's definite verdicts
+ * (pass or fail) always stand; only "review" results take the person's answer.
+ */
+export function withResolutions<R extends CriterionResult>(results: R[], resolutions: ReviewResolution[]): R[] {
+  const byId = new Map(resolutions.map((r) => [r.criterionId, r]));
+  return results.map((r) => {
+    const answer = byId.get(r.criterionId);
+    if (!answer || r.verdict !== "review") return r;
+    const fallback = answer.verdict === "pass" ? `${answer.by} checked this and accepted it.` : `${answer.by} checked this and found it not met.`;
+    return { ...r, verdict: answer.verdict, confidence: 1, evidence: `Checked by ${answer.by}`, reason: answer.note.trim() || fallback };
+  });
+}
+
 export function ledgerTotals(ledger: LedgerEntry[]) {
   const authorized = ledger.filter((e) => e.kind === "authorization").reduce((s, e) => s + e.amount, 0);
   const captured = ledger.filter((e) => e.kind === "capture").reduce((s, e) => s + e.amount, 0);
