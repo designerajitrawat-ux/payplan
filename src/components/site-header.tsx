@@ -12,14 +12,15 @@ function Backdrop() {
   return <div aria-hidden className="blueprint pointer-events-none fixed inset-0 -z-10" />;
 }
 
+/** The mark: a padlock (the PayPal hold) with a tick (the verified work). On hover the shackle lifts, like a release. */
 export function Logo({ compact = false }: { compact?: boolean }) {
   return (
     <span className="group flex items-center gap-2.5">
-      <svg viewBox="0 0 32 32" className="size-8 transition-transform duration-700 ease-out-expo group-hover:rotate-[120deg]" aria-hidden>
-        <circle cx="16" cy="16" r="13" fill="none" stroke="rgba(255,255,255,0.22)" strokeWidth="1.2" />
-        <circle cx="16" cy="16" r="5.5" fill="var(--color-star)" />
-        <circle cx="27.3" cy="9.5" r="2.6" fill="var(--color-mint)" />
-        <circle cx="5.5" cy="21.5" r="1.6" fill="var(--color-nova)" />
+      <svg viewBox="0 0 32 32" className="size-8" aria-hidden>
+        <rect width="32" height="32" rx="9" fill="var(--color-brand)" />
+        <path d="M11 14.5v-3a5 5 0 0 1 10 0v3" fill="none" stroke="#fff" strokeWidth="2.4" strokeLinecap="round" className="transition-transform duration-500 ease-out-expo group-hover:-translate-y-[2.5px]" />
+        <rect x="7.5" y="14" width="17" height="12" rx="3" fill="#fff" />
+        <path d="M11.8 20.2l2.7 2.6 5.6-5.6" fill="none" stroke="var(--color-brand)" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" />
       </svg>
       {compact ? null : <span className="font-display text-[19px] font-semibold tracking-tight text-ink">PayPlan</span>}
     </span>
