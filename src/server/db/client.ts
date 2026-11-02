@@ -17,7 +17,12 @@ export async function createDb(env: Record<string, string | undefined> = process
     const { drizzle } = await import("drizzle-orm/neon-serverless");
     return drizzle({ client: new Pool({ connectionString: env.DATABASE_URL }), schema }) as unknown as Db;
   }
-  return createPgliteDb(env.PGLITE_DIR ?? path.join(process.cwd(), ".data", "pglite"));
+  return createPgliteDb(pgliteDir(env));
+}
+
+/** Where the embedded Postgres keeps its files. An empty PGLITE_DIR (as copied from .env.example) means the default, never memory. */
+export function pgliteDir(env: Record<string, string | undefined>): string {
+  return env.PGLITE_DIR || path.join(process.cwd(), ".data", "pglite");
 }
 
 /** Embedded Postgres with migrations applied. No dataDir means in memory (tests). */
