@@ -89,7 +89,7 @@ export default function Home() {
                   Open the app
                 </CtaLink>
               </div>
-              <p className="mt-5 hidden text-xs text-white/75 sm:block">About two minutes · you play both sides</p>
+              <p className="mt-5 hidden rounded-full bg-paper-ink/45 px-3 py-1 text-xs text-white/80 backdrop-blur sm:inline-block">About two minutes · you play both sides</p>
             </InView>
           </>
         }

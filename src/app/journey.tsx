@@ -3,7 +3,7 @@
 import { AnimatePresence, motion, useMotionValueEvent, useScroll, useTransform } from "motion/react";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { NumberTicker } from "@/components/motion";
-import { createJourneyScene, ledgerAt, stationAt, STATIONS, type JourneyFonts, type JourneyScene } from "./journey-scene";
+import { createJourneyScene, ledgerAt, stationAt, STATIONS, type JourneyFonts, type JourneyScene, type ScreenRect } from "./journey-scene";
 
 /** Share of the section's scroll spent on the arrival view, while the hero leaves and the camera lands. */
 const INTRO = 0.16;
@@ -19,6 +19,25 @@ async function loadFonts(): Promise<JourneyFonts> {
   return fonts;
 }
 
+/** Where each line of the hero's words and buttons sits on the canvas, in clip space, with a little air around it. */
+function copyArea(copy: HTMLElement, canvas: HTMLCanvasElement): ScreenRect[] | undefined {
+  const c = canvas.getBoundingClientRect();
+  if (!c.width || !c.height) return undefined;
+  const x = (px: number) => ((px - c.left) / c.width) * 2 - 1;
+  const y = (px: number) => 1 - ((px - c.top) / c.height) * 2;
+  const range = document.createRange();
+  const walk = document.createTreeWalker(copy, NodeFilter.SHOW_TEXT);
+  const rects: ScreenRect[] = [];
+  for (let n = walk.nextNode(); n; n = walk.nextNode()) {
+    if (!n.textContent?.trim() || n.parentElement?.closest("[aria-hidden]")) continue;
+    range.selectNodeContents(n);
+    for (const r of range.getClientRects()) {
+      if (r.width) rects.push({ left: x(r.left - 32), right: x(r.right + 32), top: y(r.top - 20), bottom: y(r.bottom + 20) });
+    }
+  }
+  return rects.length ? rects : undefined;
+}
+
 /**
  * The opening of the landing page: the hero sits over a 3D world seen from above, then scrolling lands the
  * camera on the road and walks one milestone through it: agree, lock on PayPal, AI check, partial release,
@@ -27,6 +46,7 @@ async function loadFonts(): Promise<JourneyFonts> {
 export function Journey({ intro }: { intro: ReactNode }) {
   const section = useRef<HTMLElement>(null);
   const canvas = useRef<HTMLCanvasElement>(null);
+  const copy = useRef<HTMLDivElement>(null);
   const { scrollYProgress } = useScroll({ target: section, offset: ["start start", "end end"] });
   const [hud, setHud] = useState({ station: 0, held: 0, released: 0, started: false });
   const [ready, setReady] = useState(false);
@@ -53,6 +73,10 @@ export function Journey({ intro }: { intro: ReactNode }) {
     let visible = false;
     let disposed = false;
     let progress = scrollYProgress.get();
+    let clear: ScreenRect[] | undefined;
+    const measure = () => {
+      if (copy.current) clear = copyArea(copy.current, el);
+    };
     const pointer = { x: 0, y: 0 };
     const aim = { x: 0, y: 0 };
     const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -65,7 +89,7 @@ export function Journey({ intro }: { intro: ReactNode }) {
       progress += (scrollYProgress.get() - progress) * (reduced ? 1 : 0.08);
       pointer.x += (aim.x - pointer.x) * 0.05;
       pointer.y += (aim.y - pointer.y) * 0.05;
-      scene.frame(storyAt(progress), (performance.now() - t0) / 1000, pointer, 1 - clamp01(progress / INTRO));
+      scene.frame(storyAt(progress), (performance.now() - t0) / 1000, pointer, 1 - clamp01(progress / INTRO), clear);
       raf = requestAnimationFrame(loop);
     };
     const kick = () => {
@@ -85,8 +109,13 @@ export function Journey({ intro }: { intro: ReactNode }) {
       aim.y = -((e.clientY / window.innerHeight) * 2 - 1);
     };
     window.addEventListener("pointermove", onMove, { passive: true });
-    const ro = new ResizeObserver(() => scene?.resize(el.clientWidth, el.clientHeight));
+    const ro = new ResizeObserver(() => {
+      scene?.resize(el.clientWidth, el.clientHeight);
+      measure();
+    });
     ro.observe(el);
+    // Measure again once the headline's words have risen into place.
+    const settle = window.setTimeout(measure, 1600);
 
     void (async () => {
       try {
@@ -95,6 +124,7 @@ export function Journey({ intro }: { intro: ReactNode }) {
         const dpr = Math.min(window.devicePixelRatio || 1, window.innerWidth < 640 ? 1.25 : 1.75);
         scene = createJourneyScene(three, el, { fonts, reduced, dpr });
         scene.resize(el.clientWidth, el.clientHeight);
+        measure();
         setReady(true);
         kick();
       } catch {
@@ -104,6 +134,7 @@ export function Journey({ intro }: { intro: ReactNode }) {
 
     return () => {
       disposed = true;
+      window.clearTimeout(settle);
       cancelAnimationFrame(raf);
       io.disconnect();
       ro.disconnect();
@@ -119,8 +150,11 @@ export function Journey({ intro }: { intro: ReactNode }) {
         <canvas ref={canvas} aria-hidden className={`absolute inset-0 size-full transition-opacity duration-1000 ${ready ? "opacity-100" : "opacity-0"}`} />
 
         <motion.div style={{ opacity: heroOpacity, y: heroY, pointerEvents: heroEvents }} className="absolute inset-0 z-10">
-          <div aria-hidden className="absolute inset-0 bg-[radial-gradient(ellipse_90%_55%_at_50%_45%,rgba(9,10,16,0.6),transparent_75%)] sm:bg-[radial-gradient(ellipse_62%_55%_at_50%_44%,rgba(9,10,16,0.55),transparent_74%)]" />
-          <div className="relative flex h-full flex-col items-center justify-center px-4 pb-10 pt-16 text-center sm:px-6">{intro}</div>
+          {/* Behind the copy the world is dimmed, so it never competes with the text; the edges stay bright. */}
+          <div aria-hidden className="absolute inset-0 bg-[radial-gradient(ellipse_90%_58%_at_50%_48%,rgba(9,10,16,0.62),transparent_76%)] sm:bg-[radial-gradient(ellipse_58%_56%_at_50%_48%,rgba(9,10,16,0.58),transparent_76%)]" />
+          <div ref={copy} className="relative flex h-full flex-col items-center justify-center px-4 pb-10 pt-16 text-center sm:px-6">
+            {intro}
+          </div>
         </motion.div>
 
         <ol className="sr-only">

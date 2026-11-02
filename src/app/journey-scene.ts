@@ -9,12 +9,16 @@ type Three = typeof ThreeModule;
 
 export type JourneyFonts = { display: string; body: string; mono: string };
 
+/** A rectangle on the canvas in clip space: -1..1 on both axes, y up. */
+export type ScreenRect = { left: number; right: number; bottom: number; top: number };
+
 export type JourneyScene = {
   /**
    * `progress` 0..1 through the story, `time` in seconds, `pointer` -1..1 on both axes.
    * `lift` 0..1 raises and pulls the camera back into a wide aerial view, used behind the hero on arrival.
+   * `clear` is where the hero copy sits, line by line; while lifted, nothing stands up behind it.
    */
-  frame(progress: number, time: number, pointer: { x: number; y: number }, lift?: number): void;
+  frame(progress: number, time: number, pointer: { x: number; y: number }, lift?: number, clear?: ScreenRect[]): void;
   resize(width: number, height: number): void;
   dispose(): void;
 };
@@ -344,8 +348,10 @@ export function createJourneyScene(T: Three, canvas: HTMLCanvasElement, opts: { 
     [0.9, 8.5, "Agent\nready", "05 · pays within limits"],
   ];
   const boardCenters: ThreeModule.Vector3[] = [];
+  const boardGroups: ThreeModule.Group[] = [];
   for (const [u, side, title, sub] of boards) {
     const b = billboard(title, sub);
+    boardGroups.push(b);
     const base = at(u, side, -0.2);
     boardCenters.push(base.clone().addScaledVector(UP, 6));
     b.position.copy(base);
@@ -513,6 +519,41 @@ export function createJourneyScene(T: Three, canvas: HTMLCanvasElement, opts: { 
   })();
   scene.add(dust);
 
+  // ---------- keeping the hero copy clear ----------
+
+  // Everything that stands up from the ground, with its full-size bounds and how to raise it (0 down, 1 up).
+  // On arrival a prop that would sit behind the hero copy stays down; the ones off to the sides stand.
+  const props = [
+    ...boardGroups.map((b) => ({ obj: b, raise: (s: number) => (b.scale.y = s) })),
+    ...cards.map((c) => ({ obj: c.mesh, raise: (s: number) => c.mesh.scale.setScalar(s) })),
+    { obj: padlock, raise: (s: number) => padlock.scale.setScalar(PAD_SCALE * s) },
+    { obj: pedestal.group, raise: (s: number) => pedestal.group.scale.setScalar(s) },
+    { obj: pedSign, raise: (s: number) => pedSign.scale.setScalar(s) },
+  ].map((prop) => {
+    const box = new T.Box3().setFromObject(prop.obj);
+    // Room for the open shackle and the floating cards' bob.
+    box.max.y += prop.obj === padlock ? 2.4 * PAD_SCALE : 0.4;
+    return { ...prop, box, shown: 0 };
+  });
+  const corner = new T.Vector3();
+  const behindCopy = (box: ThreeModule.Box3, clear: ScreenRect[]) => {
+    let left = Infinity;
+    let right = -Infinity;
+    let bottom = Infinity;
+    let top = -Infinity;
+    for (let i = 0; i < 8; i++) {
+      corner.set(i & 1 ? box.max.x : box.min.x, i & 2 ? box.max.y : box.min.y, i & 4 ? box.max.z : box.min.z);
+      corner.applyMatrix4(camera.matrixWorldInverse);
+      if (corner.z > -camera.near) continue;
+      corner.applyMatrix4(camera.projectionMatrix);
+      left = Math.min(left, corner.x);
+      right = Math.max(right, corner.x);
+      bottom = Math.min(bottom, corner.y);
+      top = Math.max(top, corner.y);
+    }
+    return clear.some((r) => left < r.right && right > r.left && bottom < r.top && top > r.bottom);
+  };
+
   // ---------- per-frame update ----------
 
   const white = new T.Color(C.white);
@@ -529,7 +570,7 @@ export function createJourneyScene(T: Three, canvas: HTMLCanvasElement, opts: { 
   const end = new T.Vector3();
 
   return {
-    frame(p, time, pointer, lift = 0) {
+    frame(p, time, pointer, lift = 0, clear) {
       const t = reduced ? 0 : time;
       const lockT = smooth(phase(p, PHASES.lock));
       const verT = phase(p, PHASES.verify);
@@ -598,7 +639,7 @@ export function createJourneyScene(T: Three, canvas: HTMLCanvasElement, opts: { 
         .addScaledVector(side, (reduced ? 0 : pointer.x * 0.7) + rise * (reduced ? 0 : Math.sin(t * 0.25) * 2.5));
       look.copy(road.getPointAt(Math.min(1, camU + 0.07))).addScaledVector(UP, 3.6);
       // Aim above the world so it sits low in the frame, leaving the sky for the hero text.
-      look.lerp(tmp.copy(padCenter).lerp(road.getPointAt(0.32), 0.45).addScaledVector(UP, 7), rise * 0.8);
+      look.lerp(tmp.copy(padCenter).lerp(road.getPointAt(0.32), 0.45).addScaledVector(UP, 11), rise * 0.85);
       // A tall phone screen sees little to the sides, so it turns towards the current step's billboard,
       // except while coins fly, when the freelancer's pedestal matters more.
       const narrow = camera.aspect < 0.8;
@@ -614,6 +655,16 @@ export function createJourneyScene(T: Three, canvas: HTMLCanvasElement, opts: { 
       camera.rotateZ(Math.sin(p * Math.PI * 2) * 0.06);
       // The price tag always turns to the viewer, so the held amount stays readable.
       tag.lookAt(camera.position);
+
+      // Props behind the hero copy wait in the ground and rise as the hero scrolls away. Without a known
+      // copy area (a phone's copy fills the screen anyway) they all wait.
+      camera.updateMatrixWorld();
+      const reveal = smooth(1 - lift);
+      for (const prop of props) {
+        const target = clear && !behindCopy(prop.box, clear) ? 1 : 0;
+        prop.shown = reduced ? target : prop.shown + (target - prop.shown) * 0.06;
+        prop.raise(Math.max(0.001, reveal, smooth(prop.shown)));
+      }
 
       renderer.render(scene, camera);
     },
