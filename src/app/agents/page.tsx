@@ -2,24 +2,82 @@
 
 import { AnimatePresence, motion } from "motion/react";
 import Link from "next/link";
-import { useRef, useState, type CSSProperties } from "react";
+import { useRef, useState, useSyncExternalStore, type CSSProperties } from "react";
 import { DemoGuide } from "@/components/demo-guide";
 import { NumberTicker } from "@/components/motion";
 import { When } from "@/components/time";
-import { Arrow, Avatar, ButtonLink, Chip, Eyebrow, Panel, Toggle } from "@/components/ui";
+import { toast } from "@/components/toast";
+import { useAction } from "@/components/use-action";
+import { Arrow, Avatar, Button, ButtonLink, Chip, Eyebrow, Panel, Toggle } from "@/components/ui";
 import { landingPagePreset } from "@/lib/criteria-presets";
 import { agentReview } from "@/lib/decision";
 import { money } from "@/lib/format";
-import { updateMandate, useMandate, useMilestones } from "@/lib/store";
+import { issueAgentKey, updateMandate, useMandate, useMilestones } from "@/lib/store";
 import type { Criterion } from "@/lib/types";
 
+// The tools PayPlan's MCP server offers (web/src/server/agent/mcp.ts).
 const tools = [
+  { name: "list_milestones", body: "Sees each milestone and where its money is" },
+  { name: "get_report", body: "Reads the signed acceptance report" },
   { name: "create_milestone", body: "Proposes criteria and an amount for a job" },
   { name: "fund_milestone", body: "Asks the owner to approve one PayPal hold" },
-  { name: "get_report", body: "Reads the signed acceptance report" },
   { name: "release_verified", body: "Captures the verified share, within limits" },
   { name: "hand_back", body: "Returns the decision to the owner" },
 ];
+
+/** The client's own AI agent connects over MCP with a key that carries only the limits on this page. */
+function ConnectAgent() {
+  const [issued, setIssued] = useState<{ key: string; mcpUrl: string } | null>(null);
+  // The site's own address; empty while rendering on the server.
+  const origin = useSyncExternalStore(
+    () => () => {},
+    () => window.location.origin,
+    () => "",
+  );
+  const [copied, setCopied] = useState(false);
+  const { pending, run } = useAction();
+
+  const config = issued ? JSON.stringify({ mcpServers: { payplan: { type: "http", url: issued.mcpUrl, headers: { Authorization: `Bearer ${issued.key}` } } } }, null, 2) : "";
+  async function copy() {
+    try {
+      await navigator.clipboard.writeText(config);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1800);
+    } catch {
+      toast("Could not copy", "Select the text and copy it yourself.", "warn");
+    }
+  }
+
+  return (
+    <Panel>
+      <Eyebrow>Connect your own agent</Eyebrow>
+      <h3 className="mt-2 font-display text-xl font-semibold text-ink">Any MCP client can act for you here.</h3>
+      <p className="mt-2 text-sm leading-relaxed text-mute">Your agent reads reports and releases verified work through PayPlan&apos;s MCP server, only inside the limits above. The PayPal hold you approved stays the ceiling.</p>
+      <dl className="mt-4 grid gap-2 text-xs sm:grid-cols-[110px_minmax(0,1fr)]">
+        <dt className="text-dim">MCP endpoint</dt>
+        <dd className="min-w-0 break-all font-mono text-ink">{issued?.mcpUrl ?? `${origin}/api/mcp`}</dd>
+        <dt className="text-dim">Sign-in</dt>
+        <dd className="text-ink">A Bearer key, made below</dd>
+      </dl>
+      <Button size="sm" variant={issued ? "secondary" : "agent"} className="mt-5" disabled={pending} onClick={() => void run(async () => setIssued(await issueAgentKey()), "Could not create a key")}>
+        {issued ? "Make a new key" : "Make an agent key"}
+      </Button>
+      {issued ? (
+        <div className="rise mt-5">
+          <p className="text-xs text-sun">Copy it now: the key is shown once. Making a new key turns this one off.</p>
+          <div className="relative mt-2">
+            <pre tabIndex={0} aria-label="MCP client configuration" className="overflow-x-auto rounded-2xl border border-white/[0.06] bg-void/70 p-4 pr-20 font-mono text-xs leading-relaxed text-mute">
+              {config}
+            </pre>
+            <Button size="sm" variant="ghost" className="absolute right-2 top-2" onClick={() => void copy()}>
+              {copied ? "Copied" : "Copy"}
+            </Button>
+          </div>
+        </div>
+      ) : null}
+    </Panel>
+  );
+}
 
 // A sample report for the live preview: the Northwind landing page, 4 of 5 criteria passed.
 const sampleCriteria: Criterion[] = landingPagePreset.map((c, i) => ({ ...c, id: `sample-${i}` }));
@@ -205,9 +263,11 @@ export default function AgentsPage() {
               ))}
             </ul>
             <pre tabIndex={0} aria-label="Example tool call" className="mt-5 overflow-x-auto rounded-2xl border border-white/[0.06] bg-void/70 p-4 font-mono text-xs leading-relaxed text-mute">
-              <span className="text-nova">release_verified</span>({"{"} milestone: <span className="text-sun">&quot;m-1051&quot;</span>, max: <span className="text-sun">{mandate.perMilestoneLimit}</span> {"}"})
+              <span className="text-nova">release_verified</span>({"{"} milestone_id: <span className="text-sun">&quot;m_1d1201ec2d&quot;</span>, max_usd: <span className="text-sun">{mandate.perMilestoneLimit}</span> {"}"})
             </pre>
           </Panel>
+
+          <ConnectAgent />
         </div>
 
         <aside className="min-w-0 space-y-6">

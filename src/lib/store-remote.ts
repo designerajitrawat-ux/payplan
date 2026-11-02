@@ -382,6 +382,12 @@ let mandateTimer: ReturnType<typeof setTimeout> | undefined;
 let mandateWaiters: { resolve: () => void; reject: (e: unknown) => void }[] = [];
 
 /** Shows the change at once and saves it shortly after, so dragging a slider sends one request. */
+/** Saves the agent's limits, then issues a new MCP key for the client's own agent. The old key stops working. */
+export async function issueAgentKey(): Promise<{ key: string; mcpUrl: string }> {
+  await updateMandate({});
+  return api<{ key: string; mcpUrl: string }>("/api/mandate/key", { method: "POST" });
+}
+
 export async function updateMandate(patch: Partial<AgentMandate>) {
   const next = { ...(state.mandate ?? defaultMandate), ...patch };
   set({ mandate: next });

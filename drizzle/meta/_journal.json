@@ -15,6 +15,13 @@
       "when": 1791384220714,
       "tag": "0001_signed_reports",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1793644979166,
+      "tag": "0002_agent_key",
+      "breakpoints": true
     }
   ]
 }

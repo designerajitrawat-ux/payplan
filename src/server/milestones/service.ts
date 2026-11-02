@@ -5,7 +5,7 @@
 //   2. Call PayPal with that key. A retry re-sends the same key and PayPal returns the first result.
 //   3. In a transaction, mark the move completed and change the milestone's state.
 
-import { randomBytes } from "node:crypto";
+import { createHash, randomBytes } from "node:crypto";
 import { and, asc, desc, eq, inArray, lte, sql } from "drizzle-orm";
 import type { Db } from "../db/client";
 import * as t from "../db/schema";
@@ -82,6 +82,7 @@ function validate(input: NewMilestone) {
 }
 
 const newId = () => `m_${randomBytes(5).toString("hex")}`;
+const hashKey = (key: string) => createHash("sha256").update(key).digest("hex");
 
 /** Event type for the client's answer to a "needs a person" verdict. */
 const RESOLVED = "review_resolved";
@@ -540,6 +541,21 @@ export function createMilestoneService(deps: { db: Db; paypal: PaymentGateway; n
     async getMandate(workspaceId: string) {
       const [row] = await db.select().from(t.agentMandates).where(eq(t.agentMandates.workspaceId, workspaceId));
       return row;
+    },
+
+    /** A new key for the client's own agent; any older key stops working. It is shown once and only its hash is kept. */
+    async issueAgentKey(workspaceId: string) {
+      const key = `ppk_${randomBytes(24).toString("base64url")}`;
+      const [row] = await db.update(t.agentMandates).set({ agentKeyHash: hashKey(key), updatedAt: now() }).where(eq(t.agentMandates.workspaceId, workspaceId)).returning();
+      if (!row) throw new ValidationError("Save the agent's limits first");
+      return key;
+    },
+
+    /** The workspace an agent key belongs to, if the key is current. */
+    async workspaceForAgentKey(key: string) {
+      if (!/^ppk_[A-Za-z0-9_-]{32}$/.test(key)) return undefined;
+      const [row] = await db.select({ workspaceId: t.agentMandates.workspaceId }).from(t.agentMandates).where(eq(t.agentMandates.agentKeyHash, hashKey(key)));
+      return row?.workspaceId;
     },
 
     /**

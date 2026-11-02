@@ -165,6 +165,8 @@ export const agentMandates = pgTable("agent_mandates", {
   minConfidence: doublePrecision("min_confidence").notNull(),
   releaseVerified: boolean("release_verified").notNull().default(true),
   fundMilestones: boolean("fund_milestones").notNull().default(false),
+  /** SHA-256 of the key the client's own agent sends to the MCP endpoint. The key itself is shown once. */
+  agentKeyHash: text("agent_key_hash").unique(),
   updatedAt: ts("updated_at").notNull().defaultNow(),
 });
 

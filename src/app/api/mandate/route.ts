@@ -8,8 +8,9 @@ export async function GET() {
     const s = await services();
     const row = await s.milestones.getMandate(await workspaceId());
     if (!row) return NextResponse.json({ mandate: null });
-    const { workspaceId: _hidden, ...mandate } = row;
+    const { workspaceId: _hidden, agentKeyHash, ...mandate } = row;
     void _hidden;
+    void agentKeyHash;
     return NextResponse.json({ mandate });
   } catch (error) {
     return errorResponse(error);
@@ -20,8 +21,9 @@ export async function PUT(request: Request) {
   try {
     const s = await services();
     const input = parse(mandateBody, await readJson(request));
-    const { workspaceId: _hidden, ...mandate } = await s.milestones.upsertMandate({ ...input, workspaceId: await workspaceId() });
+    const { workspaceId: _hidden, agentKeyHash, ...mandate } = await s.milestones.upsertMandate({ ...input, workspaceId: await workspaceId() });
     void _hidden;
+    void agentKeyHash;
     return NextResponse.json({ mandate });
   } catch (error) {
     return errorResponse(error);

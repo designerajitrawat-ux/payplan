@@ -344,6 +344,11 @@ export async function endFixWindow(id: string) {
   });
 }
 
+/** The static preview has no server, so there is no MCP endpoint to connect to. */
+export async function issueAgentKey(): Promise<{ key: string; mcpUrl: string }> {
+  throw new Error("The preview has no server. Open the app to connect your own agent.");
+}
+
 export async function updateMandate(patch: Partial<AgentMandate>) {
   const s = load();
   save({ ...s, mandate: { ...s.mandate, ...patch } });
