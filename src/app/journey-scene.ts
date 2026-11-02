@@ -10,8 +10,11 @@ type Three = typeof ThreeModule;
 export type JourneyFonts = { display: string; body: string; mono: string };
 
 export type JourneyScene = {
-  /** `progress` 0..1 through the section, `time` in seconds, `pointer` -1..1 on both axes. */
-  frame(progress: number, time: number, pointer: { x: number; y: number }): void;
+  /**
+   * `progress` 0..1 through the story, `time` in seconds, `pointer` -1..1 on both axes.
+   * `lift` 0..1 raises and pulls the camera back into a wide aerial view, used behind the hero on arrival.
+   */
+  frame(progress: number, time: number, pointer: { x: number; y: number }, lift?: number): void;
   resize(width: number, height: number): void;
   dispose(): void;
 };
@@ -526,7 +529,7 @@ export function createJourneyScene(T: Three, canvas: HTMLCanvasElement, opts: { 
   const end = new T.Vector3();
 
   return {
-    frame(p, time, pointer) {
+    frame(p, time, pointer, lift = 0) {
       const t = reduced ? 0 : time;
       const lockT = smooth(phase(p, PHASES.lock));
       const verT = phase(p, PHASES.verify);
@@ -585,11 +588,17 @@ export function createJourneyScene(T: Three, canvas: HTMLCanvasElement, opts: { 
       // Camera: ride the road, look a little up, and lean towards the lock while it is the story.
       const camU = 0.012 + p * 0.85;
       const side = sideAt(camU);
+      // On arrival (lift 1) the camera hangs high above and behind the start of the road, drifting slowly,
+      // and comes down onto the road as the hero scrolls away.
+      const rise = smooth(lift);
       camera.position
         .copy(road.getPointAt(camU))
-        .addScaledVector(UP, 2.1 + bell(p, 0, 1) * 1.6 + (reduced ? 0 : pointer.y * 0.35))
-        .addScaledVector(side, reduced ? 0 : pointer.x * 0.7);
+        .addScaledVector(UP, 2.1 + bell(p, 0, 1) * 1.6 + (reduced ? 0 : pointer.y * 0.35) + rise * 10)
+        .addScaledVector(road.getTangentAt(camU), -rise * 16)
+        .addScaledVector(side, (reduced ? 0 : pointer.x * 0.7) + rise * (reduced ? 0 : Math.sin(t * 0.25) * 2.5));
       look.copy(road.getPointAt(Math.min(1, camU + 0.07))).addScaledVector(UP, 3.6);
+      // Aim above the world so it sits low in the frame, leaving the sky for the hero text.
+      look.lerp(tmp.copy(padCenter).lerp(road.getPointAt(0.32), 0.45).addScaledVector(UP, 7), rise * 0.8);
       // A tall phone screen sees little to the sides, so it turns towards the current step's billboard,
       // except while coins fly, when the freelancer's pedestal matters more.
       const narrow = camera.aspect < 0.8;

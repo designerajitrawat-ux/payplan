@@ -45,51 +45,55 @@ function SectionLabel({ n, label, tone = "dark" }: { n: string; label: string; t
 export default function Home() {
   return (
     <div className="overflow-x-clip">
-      <section className="relative mx-auto max-w-6xl px-4 pb-16 pt-16 text-center sm:px-6 sm:pt-24">
-        <SpinSticker text="Runs on PayPal sandbox · AI checked · " className="absolute right-6 top-12 hidden md:grid lg:right-2" />
-        <InView>
-          <p className="inline-flex items-center gap-2 rounded-full border border-white/12 bg-white/[0.03] px-3.5 py-1.5 font-mono text-[10px] uppercase tracking-[0.04em] text-mute sm:text-[11px] sm:tracking-[0.12em]">
-            <span className="size-1.5 rounded-full bg-mint glow-dot" />
-            For freelancers and the clients who hire them
-          </p>
-        </InView>
-        <h1 className="mx-auto mt-7 max-w-5xl font-display text-5xl font-bold leading-[0.95] tracking-[-0.045em] font-stretch-expanded sm:text-7xl lg:text-[88px]">
-          <span className="block">
-            <WordReveal text="Paid as agreed." wordClassName="pb-[0.08em]" delay={0.05} />
-            <span className="rise inline-block" style={stagger(6)}>
-              <TickSticker />
-            </span>
-          </span>
-          <WordReveal text="Criterion by criterion." className="block text-brand-2" delay={0.2} />
-        </h1>
-        <InView delay={0.35}>
-          <p className="mx-auto mt-7 max-w-xl text-lg leading-relaxed text-mute">
-            The client locks each milestone on their own <span className="font-semibold text-ink">PayPal</span>. An <span className="font-semibold text-ink">AI checker</span> tests the work against what was agreed. Only the share that passed is released.
-          </p>
-          <ul className="mx-auto mt-6 flex max-w-2xl flex-wrap justify-center gap-2 text-[13px]">
-            {[
-              ["Freelancers", "get paid for every part that passed"],
-              ["Clients", "pay only for what was delivered"],
-              ["AI agents", "pay within limits you set"],
-            ].map(([who, what]) => (
-              <li key={who} className="rounded-full border border-white/12 bg-white/[0.03] px-3.5 py-1.5 text-mute">
-                <span className="font-semibold text-ink">{who}</span> {what}
-              </li>
-            ))}
-          </ul>
-        </InView>
-        <InView delay={0.45}>
-          <div className="mt-10 flex flex-wrap justify-center gap-4">
-            <CtaLink href="/new?demo=1">Start the walkthrough</CtaLink>
-            <CtaLink href="/dashboard" variant="secondary">
-              Open the app
-            </CtaLink>
-          </div>
-          <p className="mt-6 text-xs text-dim">About two minutes · you play both sides</p>
-        </InView>
-      </section>
-
-      <Journey />
+      <Journey
+        intro={
+          <>
+            <SpinSticker text="Runs on PayPal sandbox · AI checked · " className="absolute right-8 top-24 hidden md:grid" />
+            <InView>
+              <p className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-paper-ink/45 px-3.5 py-1.5 font-mono text-[10px] uppercase tracking-[0.04em] text-white/90 backdrop-blur sm:text-[11px] sm:tracking-[0.12em]">
+                <span className="size-1.5 rounded-full bg-mint glow-dot" />
+                For freelancers and the clients who hire them
+              </p>
+            </InView>
+            <h1 className="mx-auto mt-6 max-w-5xl font-display text-5xl font-bold leading-[0.95] tracking-[-0.045em] text-white font-stretch-expanded [text-shadow:0_4px_30px_rgba(9,10,16,0.35)] sm:text-7xl lg:text-[88px]">
+              <span className="block">
+                <WordReveal text="Paid as agreed." wordClassName="pb-[0.08em]" delay={0.05} />
+                <span className="rise inline-block" style={stagger(6)}>
+                  <TickSticker />
+                </span>
+              </span>
+              <WordReveal text="Criterion by criterion." className="block text-white/75" delay={0.2} />
+            </h1>
+            <InView delay={0.35}>
+              <p className="mx-auto mt-6 max-w-xl text-base leading-relaxed text-white/90 sm:text-lg">
+                The client locks each milestone on their own <span className="font-semibold text-white">PayPal</span>. An <span className="font-semibold text-white">AI checker</span> tests the work against what was agreed. Only the share that passed is released.
+              </p>
+              <ul className="mx-auto mt-5 hidden max-w-2xl flex-wrap justify-center gap-2 text-[13px] sm:flex">
+                {[
+                  ["Freelancers", "get paid for every part that passed"],
+                  ["Clients", "pay only for what was delivered"],
+                  ["AI agents", "pay within limits you set"],
+                ].map(([who, what]) => (
+                  <li key={who} className="rounded-full border border-white/20 bg-paper-ink/45 px-3.5 py-1.5 text-white/80 backdrop-blur">
+                    <span className="font-semibold text-white">{who}</span> {what}
+                  </li>
+                ))}
+              </ul>
+            </InView>
+            <InView delay={0.45}>
+              <div className="mt-8 flex flex-wrap justify-center gap-4">
+                <CtaLink href="/new?demo=1" variant="light">
+                  Start the walkthrough
+                </CtaLink>
+                <CtaLink href="/dashboard" variant="ink">
+                  Open the app
+                </CtaLink>
+              </div>
+              <p className="mt-5 hidden text-xs text-white/75 sm:block">About two minutes · you play both sides</p>
+            </InView>
+          </>
+        }
+      />
 
       <div id="product" className="scroll-mt-16 pt-24">
         <ProductWindow />

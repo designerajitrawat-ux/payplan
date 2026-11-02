@@ -1,9 +1,14 @@
 "use client";
 
-import { AnimatePresence, motion, useMotionValueEvent, useScroll } from "motion/react";
-import { useEffect, useRef, useState } from "react";
+import { AnimatePresence, motion, useMotionValueEvent, useScroll, useTransform } from "motion/react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { NumberTicker } from "@/components/motion";
 import { createJourneyScene, ledgerAt, stationAt, STATIONS, type JourneyFonts, type JourneyScene } from "./journey-scene";
+
+/** Share of the section's scroll spent on the arrival view, while the hero leaves and the camera lands. */
+const INTRO = 0.16;
+const clamp01 = (v: number) => Math.min(1, Math.max(0, v));
+const storyAt = (r: number) => clamp01((r - INTRO) / (1 - INTRO));
 
 /** The page's fonts as canvas font families, loaded before the billboards are drawn. */
 async function loadFonts(): Promise<JourneyFonts> {
@@ -15,18 +20,27 @@ async function loadFonts(): Promise<JourneyFonts> {
 }
 
 /**
- * A scroll-driven 3D walk through one milestone: agree, lock on PayPal, AI check, partial release, agent.
- * Three.js loads only when this section is on the page. Without WebGL the captions and numbers still tell the story.
+ * The opening of the landing page: the hero sits over a 3D world seen from above, then scrolling lands the
+ * camera on the road and walks one milestone through it: agree, lock on PayPal, AI check, partial release,
+ * agent. Three.js loads only here. Without WebGL the hero, captions and numbers still tell the story.
  */
-export function Journey() {
+export function Journey({ intro }: { intro: ReactNode }) {
   const section = useRef<HTMLElement>(null);
   const canvas = useRef<HTMLCanvasElement>(null);
   const { scrollYProgress } = useScroll({ target: section, offset: ["start start", "end end"] });
   const [hud, setHud] = useState({ station: 0, held: 0, released: 0, started: false });
-  const [failed, setFailed] = useState(false);
+  const [ready, setReady] = useState(false);
 
-  useMotionValueEvent(scrollYProgress, "change", (p) => {
-    const next = { station: stationAt(p), ...ledgerAt(p), started: p > 0.015 };
+  const heroOpacity = useTransform(scrollYProgress, [0, INTRO * 0.7], [1, 0]);
+  const heroY = useTransform(scrollYProgress, [0, INTRO], [0, -90]);
+  const heroEvents = useTransform(scrollYProgress, (v) => (v < INTRO * 0.4 ? "auto" : "none"));
+  const hudOpacity = useTransform(scrollYProgress, [INTRO * 0.7, INTRO], [0, 1]);
+  const hudEvents = useTransform(scrollYProgress, (v) => (v > INTRO * 0.7 ? "auto" : "none"));
+  const rail = useTransform(scrollYProgress, [INTRO, 1], [0, 1]);
+
+  useMotionValueEvent(scrollYProgress, "change", (r) => {
+    const p = storyAt(r);
+    const next = { station: stationAt(p), ...ledgerAt(p), started: r > 0.01 };
     setHud((h) => (h.station === next.station && h.held === next.held && h.released === next.released && h.started === next.started ? h : next));
   });
 
@@ -51,7 +65,7 @@ export function Journey() {
       progress += (scrollYProgress.get() - progress) * (reduced ? 1 : 0.08);
       pointer.x += (aim.x - pointer.x) * 0.05;
       pointer.y += (aim.y - pointer.y) * 0.05;
-      scene.frame(progress, (performance.now() - t0) / 1000, pointer);
+      scene.frame(storyAt(progress), (performance.now() - t0) / 1000, pointer, 1 - clamp01(progress / INTRO));
       raf = requestAnimationFrame(loop);
     };
     const kick = () => {
@@ -81,9 +95,10 @@ export function Journey() {
         const dpr = Math.min(window.devicePixelRatio || 1, window.innerWidth < 640 ? 1.25 : 1.75);
         scene = createJourneyScene(three, el, { fonts, reduced, dpr });
         scene.resize(el.clientWidth, el.clientHeight);
+        setReady(true);
         kick();
       } catch {
-        setFailed(true);
+        // No WebGL: the blue backdrop, the hero and the captions carry the page.
       }
     })();
 
@@ -99,9 +114,14 @@ export function Journey() {
 
   const st = STATIONS[hud.station];
   return (
-    <section ref={section} aria-label="One milestone getting paid, as a 3D scene" className="relative h-[380vh] bg-brand">
+    <section ref={section} aria-label="PayPlan: paid as agreed, then one milestone walked through in 3D" className="relative h-[460vh] bg-brand">
       <div className="sticky top-0 h-svh overflow-hidden">
-        <canvas ref={canvas} aria-hidden className={`absolute inset-0 size-full transition-opacity duration-700 ${failed ? "opacity-0" : ""}`} />
+        <canvas ref={canvas} aria-hidden className={`absolute inset-0 size-full transition-opacity duration-1000 ${ready ? "opacity-100" : "opacity-0"}`} />
+
+        <motion.div style={{ opacity: heroOpacity, y: heroY, pointerEvents: heroEvents }} className="absolute inset-0 z-10">
+          <div aria-hidden className="absolute inset-0 bg-[radial-gradient(ellipse_90%_55%_at_50%_45%,rgba(9,10,16,0.6),transparent_75%)] sm:bg-[radial-gradient(ellipse_62%_55%_at_50%_44%,rgba(9,10,16,0.55),transparent_74%)]" />
+          <div className="relative flex h-full flex-col items-center justify-center px-4 pb-10 pt-16 text-center sm:px-6">{intro}</div>
+        </motion.div>
 
         <ol className="sr-only">
           {STATIONS.map((s) => (
@@ -111,8 +131,8 @@ export function Journey() {
           ))}
         </ol>
 
-        <div aria-hidden className="pointer-events-none absolute inset-0">
-          <div className="absolute right-4 top-20 w-44 rounded-2xl border border-white/10 bg-paper-ink/90 p-3.5 text-white shadow-[0_5px_0_0_#000] sm:right-8 sm:top-24 sm:w-64 sm:p-4">
+        <motion.div style={{ opacity: hudOpacity, pointerEvents: hudEvents }} className="absolute inset-0">
+          <div aria-hidden className="pointer-events-none absolute right-4 top-20 w-44 rounded-2xl border border-white/10 bg-paper-ink/90 p-3.5 text-white shadow-[0_5px_0_0_#000] sm:right-8 sm:top-24 sm:w-64 sm:p-4">
             <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-white/60">Milestone · $1,000</p>
             <div className="mt-2.5 flex items-baseline justify-between gap-2 sm:mt-3">
               <span className="text-[11px] text-white/75 sm:text-xs">Held on PayPal</span>
@@ -124,7 +144,7 @@ export function Journey() {
             </div>
           </div>
 
-          <div className="absolute bottom-6 left-4 right-4 max-w-md sm:bottom-10 sm:left-8">
+          <div aria-hidden className="pointer-events-none absolute bottom-6 left-4 right-4 max-w-md sm:bottom-10 sm:left-8">
             <AnimatePresence mode="popLayout" initial={false}>
               <motion.div
                 key={hud.station}
@@ -143,22 +163,22 @@ export function Journey() {
             </AnimatePresence>
           </div>
 
-          <div className="absolute bottom-0 right-3 top-0 hidden w-px bg-white/25 sm:block">
-            <motion.div className="h-full w-full origin-top bg-white" style={{ scaleY: scrollYProgress }} />
+          <div aria-hidden className="absolute bottom-0 right-3 top-0 hidden w-px bg-white/25 sm:block">
+            <motion.div className="h-full w-full origin-top bg-white" style={{ scaleY: rail }} />
           </div>
-        </div>
+
+          <a href="#product" className="absolute left-4 top-20 rounded-full bg-paper-ink/60 px-3.5 py-2 font-mono text-[11px] uppercase tracking-[0.1em] text-white backdrop-blur transition hover:bg-paper-ink/85 sm:bottom-10 sm:left-auto sm:right-8 sm:top-auto">
+            Skip the tour ↓
+          </a>
+        </motion.div>
 
         <motion.p
           aria-hidden
           animate={{ opacity: hud.started ? 0 : 1, y: hud.started ? 12 : 0 }}
-          className="pointer-events-none absolute left-1/2 top-24 hidden -translate-x-1/2 rounded-full bg-paper-ink/85 px-5 py-2.5 font-mono text-[11px] uppercase tracking-[0.12em] text-white lg:block"
+          className="pointer-events-none absolute bottom-6 left-1/2 z-10 hidden -translate-x-1/2 rounded-full bg-paper-ink/85 px-5 py-2.5 font-mono text-[11px] uppercase tracking-[0.12em] text-white md:block"
         >
-          Scroll to see a milestone get paid
+          Scroll to see a milestone get paid ↓
         </motion.p>
-
-        <a href="#product" className="absolute left-4 top-20 rounded-full bg-paper-ink/60 px-3.5 py-2 font-mono text-[11px] uppercase tracking-[0.1em] text-white backdrop-blur transition hover:bg-paper-ink/85 sm:bottom-10 sm:left-auto sm:right-8 sm:top-auto">
-          Skip the tour ↓
-        </a>
       </div>
     </section>
   );
