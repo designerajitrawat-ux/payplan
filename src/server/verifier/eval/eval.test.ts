@@ -1,7 +1,7 @@
 import { writeFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { llmFromEnv } from "../../llm";
-import { createLlmJudge, createRulesJudge } from "../judge";
+import { createHybridJudge, createLlmJudge, createRulesJudge } from "../judge";
 import { CASES, score } from "./cases";
 
 describe("evaluation set", () => {
@@ -25,7 +25,8 @@ describe("evaluation set", () => {
     "the AI judge: accuracy and false passes",
     async () => {
       const config = llmFromEnv()!;
-      const judge = createLlmJudge(config);
+      // The same judge the app uses: tools first for measurable criteria, then the AI.
+      const judge = createHybridJudge(createLlmJudge(config));
       const results = [];
       for (const c of CASES) results.push({ c, got: (await judge.judge(c.input)).verdict });
       const s = score(results);

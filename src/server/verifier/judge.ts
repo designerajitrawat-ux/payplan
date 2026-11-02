@@ -147,7 +147,24 @@ export function createRulesJudge(): Judge {
   };
 }
 
+/**
+ * Tools decide what they can measure (the page is live, HTTPS, the form sends, the mobile audit); the AI
+ * judges everything else, and any measurable criterion the tools could not settle.
+ */
+export function createHybridJudge(ai: Judge, tools: Judge = createRulesJudge()): Judge {
+  return {
+    model: ai.model,
+    async judge(input) {
+      if (input.criterion.check === "automatic") {
+        const measured = await tools.judge(input);
+        if (measured.verdict !== "review") return measured;
+      }
+      return ai.judge(input);
+    },
+  };
+}
+
 export function judgeFromEnv(env: Record<string, string | undefined> = process.env): Judge {
   const llm = llmFromEnv(env);
-  return llm ? createLlmJudge(llm) : createRulesJudge();
+  return llm ? createHybridJudge(createLlmJudge(llm)) : createRulesJudge();
 }

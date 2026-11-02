@@ -11,7 +11,7 @@ export type LlmResult<T> = { ok: true; data: T } | { ok: false; reason: string }
 
 export function llmFromEnv(env: Record<string, string | undefined> = process.env): LlmConfig | null {
   if (!env.LLM_API_KEY) return null;
-  return { apiKey: env.LLM_API_KEY, baseUrl: env.LLM_BASE_URL || "https://generativelanguage.googleapis.com/v1beta/openai/", model: env.LLM_MODEL || "gemini-2.5-flash" };
+  return { apiKey: env.LLM_API_KEY, baseUrl: env.LLM_BASE_URL || "https://generativelanguage.googleapis.com/v1beta/openai/", model: env.LLM_MODEL || "gemini-3.5-flash" };
 }
 
 export async function chatJson<S extends z.ZodType>(
