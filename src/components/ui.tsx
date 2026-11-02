@@ -7,15 +7,16 @@ import type { LedgerEntry, MilestoneStatus, Verdict } from "@/lib/types";
 import { NumberTicker, trackSpotlight } from "./motion";
 
 const buttonBase =
-  "inline-flex items-center justify-center gap-2 rounded-full font-semibold transition duration-200 active:scale-[0.97] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-2 disabled:pointer-events-none disabled:opacity-40";
+  "inline-flex items-center justify-center gap-2 rounded-full font-semibold transition duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-2 disabled:pointer-events-none disabled:opacity-40";
 
+// Filled buttons are tactile (a lip you press into); quiet ones shrink a little instead.
 const buttonVariants = {
-  primary: "sheen bg-brand text-white shadow-[0_0_0_1px_rgba(122,162,255,0.55),0_12px_32px_-10px_rgba(47,94,255,0.95)] hover:bg-[#3d6aff] hover:shadow-[0_0_0_1px_rgba(122,162,255,0.8),0_16px_44px_-8px_rgba(47,94,255,1)]",
-  secondary: "border border-brand-2/30 bg-brand/[0.08] text-ink hover:border-brand-2/50 hover:bg-brand/[0.16]",
-  ghost: "text-mute hover:bg-white/5 hover:text-ink",
-  danger: "border border-flare/40 bg-flare/5 text-flare hover:bg-flare/10",
-  agent: "sheen bg-nova text-void shadow-[0_10px_30px_-10px_rgba(167,139,255,0.8)] hover:brightness-110",
-  money: "sheen bg-sun text-void shadow-[0_0_0_1px_rgba(255,197,61,0.5),0_12px_34px_-10px_rgba(255,197,61,0.7)] hover:shadow-[0_0_0_1px_rgba(255,197,61,0.8),0_14px_44px_-8px_rgba(255,197,61,0.9)]",
+  primary: "press bg-brand text-white [--lip-color:#0f249e] hover:bg-[#3557ff]",
+  secondary: "press border border-white/12 bg-panel-2 text-ink [--lip-color:#000000] hover:bg-[#222739]",
+  ghost: "text-mute hover:bg-white/5 hover:text-ink active:scale-[0.97]",
+  danger: "border border-flare/40 bg-flare/5 text-flare hover:bg-flare/10 active:scale-[0.97]",
+  agent: "press bg-nova text-void [--lip-color:#5a44c4] hover:brightness-110",
+  money: "press bg-sun text-void [--lip-color:#a87400] hover:brightness-105",
 };
 
 const buttonSizes = { sm: "h-9 px-3.5 text-[13px]", md: "h-11 px-5 text-sm", lg: "h-13 px-6 text-[15px]" };

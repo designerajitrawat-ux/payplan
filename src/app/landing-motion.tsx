@@ -1,6 +1,6 @@
 "use client";
 
-import { AnimatePresence, motion, useScroll, useSpring, useTransform } from "motion/react";
+import { AnimatePresence, motion, useScroll, useSpring, useTransform, type MotionValue } from "motion/react";
 import { useRef, useState, type ReactNode } from "react";
 import { ConfidenceRing, MoneyOrbit, type MoonState } from "@/components/cosmos";
 import { HoldButton, NumberTicker, trackSpotlight } from "@/components/motion";
@@ -27,6 +27,31 @@ export function WordReveal({ text, className = "", wordClassName = "", delay = 0
         </motion.span>
       ))}
     </span>
+  );
+}
+
+function LitWord({ word, progress, range, accent }: { word: string; progress: MotionValue<number>; range: [number, number]; accent: boolean }) {
+  const opacity = useTransform(progress, range, [0.16, 1]);
+  // With reduced motion the whole statement is simply lit.
+  return (
+    <motion.span aria-hidden style={{ opacity }} className={`motion-reduce:opacity-100! ${accent ? "text-brand-2" : ""}`}>
+      {word}{" "}
+    </motion.span>
+  );
+}
+
+/** A statement that lights up word by word as it scrolls through the screen. Words in `accent` turn volt. */
+export function ScrollLit({ text, accent = [], className = "" }: { text: string; accent?: string[]; className?: string }) {
+  const ref = useRef<HTMLParagraphElement>(null);
+  const { scrollYProgress } = useScroll({ target: ref, offset: ["start 0.85", "end 0.5"] });
+  const words = text.split(" ");
+  return (
+    <p ref={ref} className={className}>
+      <span className="sr-only">{text}</span>
+      {words.map((w, i) => (
+        <LitWord key={`${w}-${i}`} word={w} progress={scrollYProgress} range={[i / words.length, (i + 1) / words.length]} accent={accent.includes(w.replace(/[.,]/g, ""))} />
+      ))}
+    </p>
   );
 }
 

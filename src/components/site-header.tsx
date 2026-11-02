@@ -5,8 +5,12 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { resetDemo, resumeBackgroundWork, useMilestones, usePayPalMode } from "@/lib/store";
-import { Starfield } from "./cosmos";
 import { clearToasts, Toaster } from "./toast";
+
+/** The drafting grid behind every page, fading out below the top of the screen. */
+function Backdrop() {
+  return <div aria-hidden className="blueprint pointer-events-none fixed inset-0 -z-10" />;
+}
 
 export function Logo({ compact = false }: { compact?: boolean }) {
   return (
@@ -98,9 +102,12 @@ function ModeCard() {
   );
 }
 
+const MODE_CHIP = { prototype: "Prototype", simulated: "Simulated", sandbox: "Sandbox", live: "Live" } as const;
+
 function Sidebar() {
   const pathname = usePathname();
   const milestones = useMilestones();
+  const mode = usePayPalMode();
   // Same rule as the dashboard's "Your turn" tab, so the two numbers always match.
   const waiting = milestones.filter((m) => m.status === "fix_window" || m.status === "funded").length;
 
@@ -111,7 +118,7 @@ function Sidebar() {
           <Logo />
         </Link>
         <span className="flex items-center gap-2 lg:hidden">
-          <span className="rounded-full bg-sun/10 px-2 py-0.5 font-mono text-[11px] uppercase tracking-widest text-sun ring-1 ring-inset ring-sun/25">Prototype</span>
+          {mode ? <span className="rounded-full bg-sun/10 px-2 py-0.5 font-mono text-[11px] uppercase tracking-widest text-sun ring-1 ring-inset ring-sun/25">{MODE_CHIP[mode]}</span> : null}
           <ResetButton className="inline-flex min-h-8 items-center rounded-lg px-2.5 text-xs font-medium text-dim transition hover:bg-white/[0.06] hover:text-ink" />
         </span>
       </div>
@@ -161,24 +168,60 @@ function Sidebar() {
   );
 }
 
+const sections = [
+  { id: "problem", label: "Problem" },
+  { id: "how", label: "How it works" },
+  { id: "try", label: "Try it" },
+  { id: "paypal", label: "PayPal" },
+];
+
+/** Which landing section is crossing the middle of the screen, for the tab bar. */
+function useActiveSection() {
+  const [active, setActive] = useState<string | null>(null);
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        for (const e of entries) if (e.isIntersecting) setActive(e.target.id);
+      },
+      { rootMargin: "-50% 0px -50% 0px" },
+    );
+    for (const s of sections) {
+      const el = document.getElementById(s.id);
+      if (el) observer.observe(el);
+    }
+    return () => observer.disconnect();
+  }, []);
+  return active;
+}
+
+/** A ruled tab bar: numbered sections in mono, the current one filled with volt blue. */
 function MarketingHeader() {
+  const active = useActiveSection();
   return (
-    <header className="sticky top-0 z-30 border-b border-white/[0.06] bg-void/60 backdrop-blur-xl">
-      <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-3.5 sm:px-6">
-        <Link href="/" aria-label="PayPlan home">
+    <header className="sticky top-0 z-30 border-b border-white/10 bg-void/85 backdrop-blur-xl">
+      <div className="flex h-13 items-stretch">
+        <Link href="/" aria-label="PayPlan home" className="flex items-center border-r border-white/10 px-4 sm:px-6">
           <Logo />
         </Link>
-        <nav className="flex items-center gap-1 text-sm text-mute">
-          <a href="#how" className="inline-flex min-h-9 items-center rounded-full px-3 transition hover:text-ink">
-            How it works
-          </a>
-          <a href="#try" className="hidden min-h-9 items-center rounded-full px-3 transition hover:text-ink sm:inline-flex">
-            Try it
-          </a>
-          <Link href="/dashboard" className="rounded-full border border-white/10 px-3.5 py-1.5 text-ink transition hover:border-white/25 hover:bg-white/5">
-            Open the app
-          </Link>
+        <nav aria-label="Sections" className="flex flex-1 items-stretch font-mono text-xs uppercase tracking-[0.08em]">
+          {sections.map((s, i) => (
+            <a
+              key={s.id}
+              href={`#${s.id}`}
+              aria-current={active === s.id ? "true" : undefined}
+              className={`items-center border-r border-white/10 px-5 transition-colors ${i === 1 ? "hidden sm:flex" : "hidden lg:flex"} ${active === s.id ? "bg-brand text-white" : "text-mute hover:bg-white/[0.04] hover:text-ink"}`}
+            >
+              <span className={active === s.id ? "text-white/70" : "text-dim"}>{String(i + 1).padStart(2, "0")}.</span>
+              {s.label}
+            </a>
+          ))}
         </nav>
+        <Link href="/dashboard" className="group flex items-center gap-2 bg-brand px-4 font-mono text-xs uppercase tracking-[0.08em] text-white transition-colors hover:bg-[#3557ff] sm:px-6">
+          Open the app
+          <svg viewBox="0 0 16 16" className="size-3.5 transition-transform group-hover:translate-x-0.5" aria-hidden>
+            <path d="M3 8h9M8.5 4.5L12 8l-3.5 3.5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </Link>
       </div>
     </header>
   );
@@ -239,7 +282,7 @@ export function Chrome({ children }: { children: ReactNode }) {
   if (pathname.startsWith("/r/")) {
     return (
       <div className="grain relative isolate min-h-screen">
-        <Starfield />
+        <Backdrop />
         <main id="content">{children}</main>
       </div>
     );
@@ -250,7 +293,7 @@ export function Chrome({ children }: { children: ReactNode }) {
         <SkipLink />
         <BackgroundChecks />
         <ClearToastsOnNavigate />
-        <Starfield />
+        <Backdrop />
         {landing ? (
           <>
             <MarketingHeader />

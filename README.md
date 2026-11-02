@@ -118,7 +118,7 @@ The tests run against a real Postgres (PGlite) and a simulated PayPal that enfor
 
 ## Design language
 
-The theme is a dark "deep orbit". Colour always means money state:
+The theme is "volt ledger": a blue-black base, one volt blue used in big blocks, and a light paper band on the landing page. Buttons are tactile: a solid lip you press into. Colour always means money state:
 
 | Colour | Meaning |
 |---|---|
@@ -131,7 +131,7 @@ The theme is a dark "deep orbit". Colour always means money state:
 Fonts:
 - **Hubot Sans** for headlines.
 - **Mona Sans** for text and amounts.
-- **Martian Mono** for logs.
+- **Geist Mono** for logs, labels and section numbers.
 
 Motion respects `prefers-reduced-motion`. Details are in `docs/design-language.md`.
 
