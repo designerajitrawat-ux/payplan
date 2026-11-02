@@ -4,8 +4,8 @@ import { errorResponse, readJson, workspaceId } from "@/server/api/http";
 import { services } from "@/server/app";
 import { runVerification } from "@/server/verifier/run";
 
-// The checker runs after the response; give it time for a few AI calls.
-export const maxDuration = 60;
+// The checker runs after the response; give it time for the page fetches, PageSpeed (up to 90 s) and a few AI calls.
+export const maxDuration = 300;
 
 /** Every state change on a milestone: fund, submit, release, appeal and so on. */
 export async function POST(request: Request, ctx: RouteContext<"/api/milestones/[id]/actions">) {
