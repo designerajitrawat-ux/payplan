@@ -1,3 +1,4 @@
+import { mkdirSync } from "node:fs";
 import path from "node:path";
 import type { PgDatabase, PgQueryResultHKT } from "drizzle-orm/pg-core";
 import * as schema from "./schema";
@@ -24,6 +25,8 @@ export async function createPgliteDb(dataDir?: string): Promise<Db> {
   const { PGlite } = await import("@electric-sql/pglite");
   const { drizzle } = await import("drizzle-orm/pglite");
   const { migrate } = await import("drizzle-orm/pglite/migrator");
+  // PGlite creates only the last folder, so a fresh clone without .data/ would fail.
+  if (dataDir) mkdirSync(dataDir, { recursive: true });
   const db = drizzle({ client: new PGlite(dataDir), schema });
   await migrate(db, { migrationsFolder });
   return db as unknown as Db;
