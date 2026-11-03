@@ -2,7 +2,8 @@
 
 import { AnimatePresence, motion, useScroll, useSpring, useTransform, type MotionValue } from "motion/react";
 import { useRef, useState, type ReactNode } from "react";
-import { ConfidenceRing, MoneyOrbit, type MoonState } from "@/components/cosmos";
+import { ConfidenceRing } from "@/components/cosmos";
+import { MoneyLock, type SliceState } from "@/components/money-lock";
 import { HoldButton, NumberTicker, trackSpotlight } from "@/components/motion";
 
 const spring = { type: "spring", bounce: 0.2, duration: 0.8 } as const;
@@ -76,7 +77,7 @@ const shotRows = [
   { title: "Contact form sends a message", c: 0.98, pass: false },
 ];
 
-const shotSegments: { weight: number; state: MoonState }[] = [
+const shotSlices: { weight: number; state: SliceState }[] = [
   { weight: 20, state: "verified" },
   { weight: 20, state: "verified" },
   { weight: 20, state: "verified" },
@@ -126,7 +127,7 @@ export function ProductWindow() {
                 <p className="mt-1 text-sm text-mute">can be released to Riya</p>
                 <p className="mt-3 text-xs text-dim">4 of 5 criteria passed · $200.00 waits for a fix</p>
               </div>
-              <MoneyOrbit amountLabel="$1,000" segments={shotSegments} holding releasing={false} agent />
+              <MoneyLock amount="$1,000" caption="5 criteria on hold" slices={shotSlices} locked releasing={false} agent client={{ label: "Sam's PayPal", value: "$1,000" }} freelancer={{ label: "Riya · Pune", value: "$0" }} />
             </div>
             <div className="grid gap-2 sm:grid-cols-3">
               {shotRows.map((r) => (
@@ -165,7 +166,7 @@ type Chapter = {
   body: string;
   caption: string;
   tone: string;
-  orbit: { segments: MoonState[]; holding: boolean; releasing: boolean; agent: boolean; held: number; released: number };
+  money: { slices: SliceState[]; locked: boolean; releasing: boolean; agent: boolean; held: number; released: number };
 };
 
 const chapters: Chapter[] = [
@@ -175,7 +176,7 @@ const chapters: Chapter[] = [
     body: "Freelancer and client agree five criteria and a weight for each. The spec is frozen and hashed, so nobody can move the goalposts later.",
     caption: "5 criteria · 20% each · spec hashed",
     tone: "text-mute",
-    orbit: { segments: ["pending", "pending", "pending", "pending", "pending"], holding: false, releasing: false, agent: false, held: 0, released: 0 },
+    money: { slices: ["pending", "pending", "pending", "pending", "pending"], locked: false, releasing: false, agent: false, held: 0, released: 0 },
   },
   {
     eyebrow: "02 · Lock",
@@ -183,7 +184,7 @@ const chapters: Chapter[] = [
     body: "One PayPal authorization holds the full amount. Nothing is charged, and PayPlan never holds a cent.",
     caption: "$1,000 authorized · nothing charged",
     tone: "text-ice",
-    orbit: { segments: ["pending", "pending", "pending", "pending", "pending"], holding: true, releasing: false, agent: false, held: 1000, released: 0 },
+    money: { slices: ["pending", "pending", "pending", "pending", "pending"], locked: true, releasing: false, agent: false, held: 1000, released: 0 },
   },
   {
     eyebrow: "03 · Verify",
@@ -191,7 +192,7 @@ const chapters: Chapter[] = [
     body: "It opens the live work, runs tests, takes screenshots and scores what a test cannot. Both sides see the same evidence.",
     caption: "4 of 5 passed · contact form failed",
     tone: "text-nova",
-    orbit: { segments: ["verified", "verified", "verified", "failed", "verified"], holding: true, releasing: false, agent: false, held: 1000, released: 0 },
+    money: { slices: ["verified", "verified", "verified", "failed", "verified"], locked: true, releasing: false, agent: false, held: 1000, released: 0 },
   },
   {
     eyebrow: "04 · Release",
@@ -199,7 +200,7 @@ const chapters: Chapter[] = [
     body: "PayPal captures $800 for the four passed criteria. The last $200 stays a hold until the fix passes, or goes back.",
     caption: "+$800 captured · $200 still held",
     tone: "text-mint",
-    orbit: { segments: ["released", "released", "released", "failed", "released"], holding: true, releasing: true, agent: false, held: 200, released: 800 },
+    money: { slices: ["released", "released", "released", "failed", "released"], locked: true, releasing: true, agent: false, held: 200, released: 800 },
   },
   {
     eyebrow: "05 · Agent",
@@ -207,24 +208,24 @@ const chapters: Chapter[] = [
     body: "The client's AI agent reads the signed report, checks its mandate and releases the verified share. Anything uncertain goes back to a person.",
     caption: "Agent: GO · within its $1,000 limit",
     tone: "text-nova",
-    orbit: { segments: ["released", "released", "released", "failed", "released"], holding: true, releasing: true, agent: true, held: 200, released: 800 },
+    money: { slices: ["released", "released", "released", "failed", "released"], locked: true, releasing: true, agent: true, held: 200, released: 800 },
   },
 ];
 
-function ChapterOrbit({ c }: { c: Chapter }) {
+function ChapterMoney({ c, size = "md" }: { c: Chapter; size?: "md" | "lg" }) {
+  const { slices, locked, releasing, agent, held, released } = c.money;
   return (
-    <div>
-      <MoneyOrbit amountLabel="$1,000" segments={c.orbit.segments.map((state) => ({ weight: 20, state }))} holding={c.orbit.holding} releasing={c.orbit.releasing} agent={c.orbit.agent} />
-      <div className="mt-2 grid grid-cols-3 text-center text-xs">
-        <span className="text-dim">
-          Client · <span className="text-ice">${c.orbit.held}</span>
-        </span>
-        <span className="text-dim">Authorization</span>
-        <span className="text-dim">
-          Freelancer · <span className="text-mint">${c.orbit.released}</span>
-        </span>
-      </div>
-    </div>
+    <MoneyLock
+      size={size}
+      amount="$1,000"
+      caption={locked ? "5 criteria on hold" : "5 criteria agreed"}
+      slices={slices.map((state) => ({ weight: 20, state }))}
+      locked={locked}
+      releasing={releasing}
+      agent={agent}
+      client={{ label: "Client's PayPal", value: locked ? `$${held.toLocaleString("en-US")}` : "Not locked" }}
+      freelancer={{ label: "Freelancer", value: `$${released}` }}
+    />
   );
 }
 
@@ -241,7 +242,7 @@ export function StoryScroll() {
       <div className="hidden lg:block">
         <div className="sticky top-24 flex h-[calc(100svh-8rem)] flex-col justify-center">
           <div className="glass rounded-[28px] p-8">
-            <ChapterOrbit c={c} />
+            <ChapterMoney c={c} size="lg" />
             <div className="mt-6 flex h-8 items-center justify-center">
               <AnimatePresence mode="popLayout" initial={false}>
                 <motion.p
@@ -277,7 +278,7 @@ export function StoryScroll() {
                 <h3 className="mt-3 font-display text-3xl font-semibold tracking-tight text-balance text-ink font-stretch-semi-expanded sm:text-4xl">{ch.title}</h3>
                 <p className="mt-4 max-w-md text-[17px] leading-relaxed text-mute">{ch.body}</p>
                 <div className="glass mt-6 rounded-3xl p-5 lg:hidden">
-                  <ChapterOrbit c={ch} />
+                  <ChapterMoney c={ch} />
                   <p className={`mt-3 text-center font-mono text-xs ${ch.tone}`}>{ch.caption}</p>
                 </div>
               </motion.div>

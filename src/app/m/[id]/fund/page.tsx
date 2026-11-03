@@ -4,7 +4,7 @@ import { motion } from "motion/react";
 import Link from "next/link";
 import { useRef, useState, type KeyboardEvent } from "react";
 import { DemoGuide } from "@/components/demo-guide";
-import { MilestoneOrbit } from "@/components/milestone-orbit";
+import { MilestoneMoney } from "@/components/milestone-money";
 import { MilestoneShell, partyNames } from "@/components/milestone-shell";
 import { CopyButton } from "@/components/motion";
 import { PayPalButton } from "@/components/paypal-button";
@@ -187,7 +187,7 @@ function Fund({ m }: { m: Milestone }) {
 
         <div className="min-w-0 space-y-6">
           <Panel>
-            <MilestoneOrbit m={m} />
+            <MilestoneMoney m={m} />
           </Panel>
           <Panel>
             <h2 className="font-display text-lg font-semibold">What {names.freelancer} will deliver</h2>

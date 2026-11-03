@@ -135,12 +135,13 @@ export function MoneyBar({ ledger, amount, labels = true }: { ledger: LedgerEntr
   );
 }
 
+/** A labelled input. The hint goes under the input, so inputs side by side stay on one line. */
 export function Field({ label, hint, error, children }: { label: string; hint?: string; error?: string | null; children: ReactNode }) {
   return (
     <label className="block">
       <span className="text-[13px] font-medium text-ink">{label}</span>
-      {hint ? <span className="mt-0.5 block text-xs text-dim">{hint}</span> : null}
       <span className="mt-2 block">{children}</span>
+      {hint ? <span className="mt-1.5 block text-xs leading-relaxed text-dim">{hint}</span> : null}
       {error ? (
         <span role="alert" className="mt-1.5 block text-xs font-medium text-flare">
           {error}

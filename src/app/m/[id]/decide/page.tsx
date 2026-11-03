@@ -4,7 +4,7 @@ import { motion } from "motion/react";
 import Link from "next/link";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { DemoGuide } from "@/components/demo-guide";
-import { MilestoneOrbit } from "@/components/milestone-orbit";
+import { MilestoneMoney } from "@/components/milestone-money";
 import { MilestoneShell, partyNames } from "@/components/milestone-shell";
 import { HoldButton, NumberTicker } from "@/components/motion";
 import { Countdown } from "@/components/time";
@@ -215,8 +215,13 @@ function ManualDecision({ m }: { m: Milestone }) {
   const demoControls = useDemoControls();
   const { pending, run } = useAction();
 
+  // With nothing to pay yet, accepting the report moves no money: it only opens the fix window.
+  const nothingToPay = releasable === 0 && needsYou === 0;
+
   async function release() {
-    if (await run(() => acceptRelease(m.id), "The release did not go through")) toast(`${money(releasable)} released to ${names.freelancer}`, "PayPal captured the verified share.", "good");
+    if (!(await run(() => acceptRelease(m.id), "The release did not go through"))) return;
+    if (nothingToPay) toast(`Sent back to ${names.freelancer} for a fix`, `${money(waiting)} stays a hold on your PayPal for up to ${m.fixWindowHours} hours.`, "info");
+    else toast(`${money(releasable)} released to ${names.freelancer}`, "PayPal captured the verified share.", "good");
   }
 
   return (
@@ -242,7 +247,15 @@ function ManualDecision({ m }: { m: Milestone }) {
         ) : null}
         <NeedsYourCheck m={m} />
         <Panel>
-          <h2 className="font-display text-2xl font-semibold tracking-tight text-balance">Release <span className="font-sans">{money(releasable)}</span> for the criteria that passed?</h2>
+          <h2 className="font-display text-2xl font-semibold tracking-tight text-balance">
+            {nothingToPay ? (
+              "Nothing can be released yet"
+            ) : (
+              <>
+                Release <span className="font-sans">{money(releasable)}</span> for the criteria that passed?
+              </>
+            )}
+          </h2>
           <p className="mt-2 text-sm leading-relaxed text-mute">
             {needsYou > 0
               ? `${needsYou === 1 ? "1 criterion needs" : `${needsYou} criteria need`} your check above first.${gateNeedsYou ? " A must-pass criterion is among them, so nothing can be released until it passes." : ""}`
@@ -256,7 +269,13 @@ function ManualDecision({ m }: { m: Milestone }) {
             <MoneyBar ledger={m.ledger} amount={m.amount} />
           </div>
           <div className="mt-7 flex flex-wrap items-start gap-3">
-            <HoldButton onComplete={() => void release()}>Hold to release {money(releasable)}</HoldButton>
+            {nothingToPay ? (
+              <Button size="lg" disabled={pending} onClick={() => void release()}>
+                Send it back for a fix
+              </Button>
+            ) : (
+              <HoldButton onComplete={() => void release()}>Hold to release {money(releasable)}</HoldButton>
+            )}
             <Button size="lg" variant="danger" onClick={() => setAppealing((v) => !v)}>
               Appeal to a person
             </Button>
@@ -297,7 +316,16 @@ function ManualDecision({ m }: { m: Milestone }) {
       </aside>
       {m.walkthrough ? (
         <DemoGuide step={6}>
-          You are <strong>{names.client}, the client</strong>. Press and hold <strong>Hold to release</strong>, or try <strong>Appeal to a person</strong> to see that path.
+          You are <strong>{names.client}, the client</strong>.{" "}
+          {nothingToPay ? (
+            <>
+              A must-pass criterion failed, so press <strong>Send it back for a fix</strong>.
+            </>
+          ) : (
+            <>
+              Press and hold <strong>Hold to release</strong>, or try <strong>Appeal to a person</strong> to see that path.
+            </>
+          )}
         </DemoGuide>
       ) : null}
     </div>
@@ -375,7 +403,7 @@ function Decision({ m }: { m: Milestone }) {
             </FocusHeading>
             <p className="mt-2 text-sm text-mute">{totals.held > 0 ? `${money(totals.held)} is still only a hold on ${names.client}'s PayPal while the fix is made.` : "The milestone is paid in full."}</p>
             <div className="mt-6">
-              <MilestoneOrbit m={m} />
+              <MilestoneMoney m={m} />
             </div>
             <div className="mt-6 flex flex-wrap gap-3">
               {totals.held > 0 ? (

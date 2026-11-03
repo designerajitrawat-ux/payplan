@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { ConfidenceRing, verdictTone } from "@/components/cosmos";
 import { DemoGuide } from "@/components/demo-guide";
-import { MilestoneOrbit } from "@/components/milestone-orbit";
+import { MilestoneMoney } from "@/components/milestone-money";
 import { MilestoneShell, partyNames } from "@/components/milestone-shell";
 import { CopyButton, NumberTicker, trackSpotlight } from "@/components/motion";
 import { Countdown, When } from "@/components/time";
@@ -153,7 +153,7 @@ function ReportView({ m }: { m: Milestone }) {
           ) : null}
         </div>
         <div className="min-w-0">
-          <MilestoneOrbit m={m} />
+          <MilestoneMoney m={m} />
         </div>
       </Panel>
 

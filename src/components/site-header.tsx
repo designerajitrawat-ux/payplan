@@ -93,7 +93,7 @@ function ModeCard() {
   if (!mode) return null;
   const card = MODE_CARD[mode];
   return (
-    <div className="rounded-2xl border border-sun/20 bg-sun/[0.06] p-3.5 text-xs leading-relaxed text-mute">
+    <div data-mode-card className="rounded-2xl border border-sun/20 bg-sun/[0.06] p-3.5 text-xs leading-relaxed text-mute">
       <p className="flex items-center gap-2 font-semibold text-sun">
         <span className="size-1.5 rounded-full bg-sun glow-dot pulse-soft" />
         {card.title}
@@ -176,13 +176,18 @@ const sections = [
   { id: "paypal", label: "PayPal" },
 ];
 
-/** Which landing section is crossing the middle of the screen, for the tab bar. */
+/** Which landing section is crossing the middle of the screen, for the tab bar. None while the hero is on screen. */
 function useActiveSection() {
   const [active, setActive] = useState<string | null>(null);
   useEffect(() => {
+    const crossing = new Set<string>();
     const observer = new IntersectionObserver(
       (entries) => {
-        for (const e of entries) if (e.isIntersecting) setActive(e.target.id);
+        for (const e of entries) {
+          if (e.isIntersecting) crossing.add(e.target.id);
+          else crossing.delete(e.target.id);
+        }
+        setActive(sections.find((s) => crossing.has(s.id))?.id ?? null);
       },
       { rootMargin: "-50% 0px -50% 0px" },
     );

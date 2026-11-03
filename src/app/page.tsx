@@ -121,7 +121,7 @@ export default function Home() {
           <h2 className="mt-4 max-w-3xl font-display text-4xl font-semibold tracking-[-0.03em] text-balance sm:text-5xl">
             From a handshake <span className="text-dim">to a payout.</span>
           </h2>
-          <p className="mt-4 max-w-lg text-mute">Scroll through one $1,000 milestone. The orbit is the PayPal hold, split into the five things that were agreed.</p>
+          <p className="mt-4 max-w-lg text-mute">Scroll through one $1,000 milestone. The padlock is the PayPal hold, split into the five things that were agreed.</p>
         </InView>
         <div className="mt-16 pb-24">
           <StoryScroll />

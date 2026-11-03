@@ -220,6 +220,21 @@ body {
     box-shadow: 0 0 14px var(--color-mint);
     animation: travel 2.4s var(--ease-out-expo) infinite;
   }
+  /* The hold's wire: money waits on the client's PayPal, so it glows ice instead of mint. */
+  .flow-line[data-active="true"][data-tone="ice"] {
+    background-image: repeating-linear-gradient(90deg, rgba(79, 200, 255, 0.5) 0 6px, transparent 6px 11px);
+  }
+  .flow-line[data-active="true"][data-tone="ice"]::after {
+    background: var(--color-ice);
+    box-shadow: 0 0 14px var(--color-ice);
+  }
+
+  /* In the walkthrough the guide takes the foot of the sidebar, where the mode card would sit under it. */
+  @media (min-width: 64rem) {
+    body:has([data-demo-guide]) [data-mode-card] {
+      display: none;
+    }
+  }
 
   .rise {
     animation: rise 700ms var(--ease-out-expo) both;
