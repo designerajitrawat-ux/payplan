@@ -16,6 +16,24 @@ const platform = [
   "PageSpeed mobile audit",
 ];
 
+// Each figure is quoted from its source as published; the link is the page it was checked on (3 Nov 2026).
+const problemStats = [
+  {
+    figure: "2,184",
+    text: "of the 2,542 complaints New York freelancers filed in five years were about late or missing payment.",
+    source: "NYC DCWP, 2023",
+    href: "https://www.nyc.gov/assets/dca/downloads/pdf/workers/DCWP-Freelance-Isnt-Free-Act-Five-YearReport-2023.pdf",
+  },
+  { figure: "31%", text: "of UK freelancers have finished work and never been paid for it.", source: "IPSE", href: "https://www.ipse.co.uk/policy/research/financial-wellbeing/late-payment-within-the-self-employed-sector.html" },
+  {
+    figure: "31%",
+    text: "of UK businesses that paid suppliers late blamed a disputed invoice: was the work done as agreed?",
+    source: "UK Dept for Business and Trade, 2024",
+    href: "https://assets.publishing.service.gov.uk/media/66eb01e7ba4b4b3f945016c8/late-payments-research-understanding-variations-in-payment-performance-and-practices-across-business-sectors-and-sizes.pdf",
+  },
+  { figure: "+55%", text: "growth of India's gig workforce in four years, to 1.2 crore workers, freelancers among them.", source: "Economic Survey 2025-26", href: "https://www.indiabudget.gov.in/economicsurvey/doc/eschapter/echap12.pdf" },
+];
+
 const paypalParts = [
   { api: "Orders v2 · AUTHORIZE", use: "Locks the milestone on the client's own PayPal, payable straight to the freelancer" },
   { api: "Payments v2 · partial capture", use: "Releases one criterion's share at a time" },
@@ -112,6 +130,19 @@ export default function Home() {
           accent={["PayPal", "AI"]}
           text="Freelance payments break at handoff. The client goes quiet, or says the work is not what was agreed, and the freelancer waits. PayPlan holds the money on the client's own PayPal, has an AI checker test the work, and releases exactly the share that passed."
         />
+        <InView className="mt-14">
+          <ul className="grid gap-px overflow-hidden rounded-[28px] border border-white/[0.08] bg-white/[0.08] sm:grid-cols-2 lg:grid-cols-4">
+            {problemStats.map((s) => (
+              <li key={s.source} className="flex flex-col bg-void p-6">
+                <p className="font-display text-4xl font-semibold tracking-[-0.03em] text-ink">{s.figure}</p>
+                <p className="mt-2 flex-1 text-sm leading-relaxed text-mute">{s.text}</p>
+                <a href={s.href} target="_blank" rel="noreferrer" className="mt-4 font-mono text-[11px] text-dim underline-offset-4 hover:text-brand-2 hover:underline">
+                  {s.source} ↗
+                </a>
+              </li>
+            ))}
+          </ul>
+        </InView>
       </section>
 
       <section id="how" className="scroll-mt-16 pt-32">
