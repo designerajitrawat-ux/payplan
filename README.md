@@ -1,6 +1,6 @@
-# PayPlan web app
+# PayPlan
 
-PayPlan (working name) is milestone payments for freelancers, where the money moves only for work that is checked.
+Milestone payments for freelancers, where the money moves only for work that is checked. Built by Ajit Singh Rawat for the PayPal AI Hackathon 2026. Demo video: https://youtu.be/srmcdfmvovk
 
 1. The client locks each milestone with a **PayPal authorization hold** on their own PayPal account. Nothing is charged, and PayPlan never holds the money.
 2. When the freelancer delivers, an **AI checker** opens the delivered work and judges it against the criteria both sides agreed.
@@ -78,6 +78,20 @@ Every acceptance report is signed with Ed25519. Its id is the SHA-256 of exactly
   - The rules engine turns verdicts into an amount, capped by the PayPal hold.
   - The agent can act only inside its mandate.
 - **No fake AI.** Without an AI key, nothing is called AI: criteria drafting returns a labelled template, and judgement calls go to a person.
+
+## Tools used
+
+| Tool | What it does in PayPlan |
+|---|---|
+| **PayPal Orders v2** (intent `AUTHORIZE`) | Locks each milestone as an authorization hold on the client's PayPal, with the freelancer's PayPal as the payee |
+| **PayPal JS SDK v6** | The Pay with PayPal button and the approval popup |
+| **PayPal Payments v2** | Partial capture of the share that passed (`final_capture: false`), final capture, void, reauthorize |
+| **PayPal Webhooks** | Signature-verified events that confirm captures and catch disputes |
+| **PayPal Disputes API** | `provide-evidence` with the signed report as a PDF, when a dispute reaches PayPlan |
+| **Google Gemini** (`gemini-3.5-flash-lite`, fallback `gemini-3.1-flash-lite`) | Drafts acceptance criteria from the brief, and judges the criteria a test cannot measure, with JSON-schema outputs |
+| **Google PageSpeed Insights** | The mobile audit and the phone screenshot the checker reads |
+| **Model Context Protocol** | `/api/mcp`: the client's own AI agent reads reports and releases verified work within its limits |
+| **APIMatic Context Plugin** (sponsor tool, used while building) | Looked up PayPal API details through its MCP server, such as setting the payee on an AUTHORIZE order and the reauthorization rules |
 
 ## Deploy
 1. **Vercel:** Root Directory `web`, build command `npm run vercel-build` (applies database migrations, then builds).
