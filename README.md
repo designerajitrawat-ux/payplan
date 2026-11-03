@@ -9,6 +9,10 @@ PayPlan (working name) is milestone payments for freelancers, where the money mo
 
 The client can approve each release themselves or hand that job to their **AI agent**, within limits they set.
 
+## Live demo
+
+**https://payplan-tau.vercel.app**: real PayPal sandbox, live AI checker, Neon Postgres. Press **Start the walkthrough**; you play both sides. No real money moves.
+
 ## Run it locally (no keys needed)
 
 ```bash
@@ -74,8 +78,8 @@ Every acceptance report is signed with Ed25519. Its id is the SHA-256 of exactly
 - **No fake AI.** Without an AI key, nothing is called AI: criteria drafting returns a labelled template, and judgement calls go to a person.
 
 ## Deploy
-1. **Vercel:** Root Directory `web`. The `vercel-build` script applies database migrations, then builds.
-2. **Neon Postgres:** set `DATABASE_URL`.
+1. **Vercel:** Root Directory `web`, build command `npm run vercel-build` (applies database migrations, then builds).
+2. **Neon Postgres:** from Vercel Storage (Marketplace → Neon) with the env prefix `DATABASE`, which sets `DATABASE_URL`.
 3. **Environment variables:** listed in `.env.example`. Set `CRON_SECRET` too, and `REPORT_SIGNING_KEY` (`npm run keys:generate`) so signed reports stay verifiable across deploys.
 4. **PayPal webhook:** point it at `https://<your-app>/api/paypal/webhook` and set `PAYPAL_WEBHOOK_ID`.
 5. **Timer job:** `.github/workflows/timer.yml` calls `/api/cron/due` every 30 minutes. Add the repository secrets `APP_URL` and `CRON_SECRET`. Scheduled runs only happen on the default branch.
