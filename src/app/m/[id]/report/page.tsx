@@ -253,13 +253,19 @@ function ReportView({ m }: { m: Milestone }) {
               </div>
             </dl>
             <p className="mt-4 text-xs leading-relaxed text-dim">
-              {storeKind === "remote" ? "Signed with Ed25519, so anyone with the link can check it is genuine. " : ""}If a dispute is opened, this report becomes the evidence file sent to PayPal.
+              {storeKind === "remote" ? "Signed with Ed25519, so anyone with the link can check it is genuine. " : ""}If a dispute is opened, this report is the evidence: attach its PDF in PayPal&apos;s Resolution Center.
             </p>
             {storeKind === "remote" ? (
-              <Link href={`/r/${report.reportHash}`} className="mt-3 inline-flex min-h-8 items-center gap-1.5 text-xs font-semibold text-nova underline-offset-4 hover:underline">
-                Verify this report publicly
-                <Arrow className="size-3" />
-              </Link>
+              <div className="mt-3 flex flex-wrap gap-x-5 gap-y-1">
+                <Link href={`/r/${report.reportHash}`} className="inline-flex min-h-8 items-center gap-1.5 text-xs font-semibold text-nova underline-offset-4 hover:underline">
+                  Verify this report publicly
+                  <Arrow className="size-3" />
+                </Link>
+                <a href={`/api/reports/${report.reportHash}/pdf`} className="inline-flex min-h-8 items-center gap-1.5 text-xs font-semibold text-nova underline-offset-4 hover:underline">
+                  Download the PDF for a PayPal dispute
+                  <Arrow className="size-3" />
+                </a>
+              </div>
             ) : null}
           </Panel>
 

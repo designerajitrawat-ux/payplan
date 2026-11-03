@@ -5,7 +5,7 @@
 import { PayPalError, type AuthorizeOrderInput } from "./client";
 import type { PaymentGateway } from "../milestones/service";
 
-type Hold = { orderId: string; amount: number; captured: number; closed: boolean };
+type Hold = { orderId: string; amount: number; captured: number; closed: boolean; reauthorized?: boolean };
 type Failure = { method: keyof PaymentGateway; error: Error; afterPayPalActs: boolean };
 
 // Shared by every instance: PayPal ids are unique everywhere, so simulated ones must be too.
@@ -70,6 +70,20 @@ export function createSimulatedPayPal() {
         if (!hold) throw new PayPalError(404, "RESOURCE_NOT_FOUND", "The specified resource does not exist.", "INVALID_RESOURCE_ID", `sim-${seq}`);
         if (hold.closed) throw unprocessable("AUTHORIZATION_ALREADY_CAPTURED", "Authorization has been previously captured or voided.");
         hold.closed = true;
+      }),
+
+    reauthorizeAuthorization: (authorizationId, input) =>
+      call("reauthorizeAuthorization", input.requestId, [authorizationId, input], () => {
+        const hold = holds.get(authorizationId);
+        if (!hold) throw new PayPalError(404, "RESOURCE_NOT_FOUND", "The specified resource does not exist.", "INVALID_RESOURCE_ID", `sim-${seq}`);
+        if (hold.closed) throw unprocessable("AUTHORIZATION_ALREADY_CAPTURED", "Authorization has been previously captured or voided.");
+        if (hold.reauthorized) throw unprocessable("REAUTHORIZATION_NOT_ALLOWED", "A reauthorized payment cannot be reauthorized again.");
+        if (input.cents > hold.amount - hold.captured) throw unprocessable("MAX_AUTHORIZATION_AMOUNT_EXCEEDED", "Reauthorization amount exceeds what is left.");
+        // PayPal answers with a new authorization; captures and voids move to it.
+        hold.closed = true;
+        const id = nextId("AUTH");
+        holds.set(id, { orderId: hold.orderId, amount: input.cents, captured: 0, closed: false, reauthorized: true });
+        return { id, status: "CREATED", cents: input.cents, expirationTime: new Date(Date.now() + 29 * 86_400_000).toISOString() };
       }),
   };
 

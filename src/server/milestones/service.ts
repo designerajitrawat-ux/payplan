@@ -6,7 +6,7 @@
 //   3. In a transaction, mark the move completed and change the milestone's state.
 
 import { createHash, randomBytes } from "node:crypto";
-import { and, asc, desc, eq, inArray, lte, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gt, inArray, lte, sql } from "drizzle-orm";
 import type { Db } from "../db/client";
 import * as t from "../db/schema";
 import { withResolutions, type ReviewResolution } from "@/lib/decision";
@@ -14,13 +14,19 @@ import { agentReview, canonicalJson, moneyTotals, releasableCents, sha256 } from
 import { PayPalError, type PayPalClient } from "../paypal/client";
 import { memorySigner, verifySignature, type Signer } from "../signing";
 
-export type PaymentGateway = Pick<PayPalClient, "createAuthorizeOrder" | "authorizeOrder" | "captureAuthorization" | "voidAuthorization">;
+export type PaymentGateway = Pick<PayPalClient, "createAuthorizeOrder" | "authorizeOrder" | "captureAuthorization" | "voidAuthorization" | "reauthorizeAuthorization">;
 
 type Status = t.MilestoneStatus;
 type Actor = (typeof t.actor.enumValues)[number];
 type Tx = Parameters<Parameters<Db["transaction"]>[0]>[0];
 
 const HOUR = 3_600_000;
+const DAY = 24 * HOUR;
+/** PayPal guarantees a hold for this many days, and a reauthorization is allowed until day 29. */
+const HONOR_DAYS = 3;
+const REAUTHORIZE_UNTIL_DAYS = 29;
+/** States in which money may still be waiting on the client's hold. */
+const HOLD_ALIVE: Status[] = ["funded", "verifying", "awaiting_decision", "fix_window", "appealed"];
 /** A pending move older than this was left by a crash or a lost reply, and is safe to re-send. */
 const STALE_MOVE_MS = 60_000;
 
@@ -57,6 +63,8 @@ export type NewMilestone = {
   freelancerName: string;
   freelancerEmail: string;
   freelancerLocation?: string;
+  /** Where PayPal pays the freelancer. Defaults to the deployment's payee. */
+  freelancerPaypalEmail?: string;
   amountCents: number;
   reviewWindowHours: number;
   fixWindowHours?: number;
@@ -98,12 +106,16 @@ function resolutionsFrom(events: Pick<t.EventRow, "type" | "detail">[], reportAt
   return [...latest.values()];
 }
 
-function errorJson(error: unknown): t.PayPalErrorJson {
+export function errorJson(error: unknown): t.PayPalErrorJson {
   if (error instanceof PayPalError) return { status: error.status, name: error.name, issue: error.issue, debugId: error.debugId, message: error.message };
   return { message: error instanceof Error ? error.message : String(error) };
 }
 
-export function createMilestoneService(deps: { db: Db; paypal: PaymentGateway; now?: () => Date; signer?: Signer }) {
+/**
+ * `payeeEmail` is the freelancer's PayPal for milestones that name none. PayPal then pays the freelancer
+ * straight from the client's hold; the platform's own account never touches the money.
+ */
+export function createMilestoneService(deps: { db: Db; paypal: PaymentGateway; now?: () => Date; signer?: Signer; payeeEmail?: string }) {
   const { db, paypal } = deps;
   const now = deps.now ?? (() => new Date());
   const signer = deps.signer ?? memorySigner();
@@ -289,6 +301,7 @@ export function createMilestoneService(deps: { db: Db; paypal: PaymentGateway; n
           freelancerName: spec.freelancer.name,
           freelancerEmail: spec.freelancer.email,
           freelancerLocation: input.freelancerLocation ?? "",
+          freelancerPaypalEmail: input.freelancerPaypalEmail?.trim().toLowerCase() || deps.payeeEmail || null,
           boughtByAgent: input.boughtByAgent ?? false,
           amountCents: spec.amountCents,
           reviewWindowHours: spec.reviewWindowHours,
@@ -313,6 +326,7 @@ export function createMilestoneService(deps: { db: Db; paypal: PaymentGateway; n
         customId: id,
         invoiceId: `${id}-auth`,
         requestId: `order-${id}-${attempt + 1}`,
+        ...(m.freelancerPaypalEmail ? { payeeEmail: m.freelancerPaypalEmail } : {}),
         ...urls,
       });
       await db.transaction(async (tx) => {
@@ -577,6 +591,12 @@ export function createMilestoneService(deps: { db: Db; paypal: PaymentGateway; n
       return { reportHash: report.reportHash, payload: report.payload, signature: report.signature, signerKeyId: report.signerKeyId, publicKey: knownKey ? signer.publicKeyPem : null, hashMatches, knownKey, signatureValid, valid: hashMatches && signatureValid, paypalMoves: paid };
     },
 
+    /** The milestone's newest report, checked like the public page checks it. Used as dispute evidence. */
+    async latestVerifiedReport(milestoneId: string) {
+      const [row] = await db.select({ hash: t.reports.reportHash }).from(t.reports).where(eq(t.reports.milestoneId, milestoneId)).orderBy(desc(t.reports.attempt)).limit(1);
+      return row ? service.verifyReport(row.hash) : undefined;
+    },
+
     signingKey() {
       return { keyId: signer.keyId, publicKeyPem: signer.publicKeyPem, source: signer.source };
     },
@@ -667,16 +687,59 @@ export function createMilestoneService(deps: { db: Db; paypal: PaymentGateway; n
     },
 
     /**
-     * The timer job (GitHub Actions cron calls it): releases verified work when a review window
-     * ends, returns the rest when a fix window ends. One failure does not stop the others.
+     * Keeps a long job's money guaranteed. PayPal honours a hold for 3 days and lets it be
+     * reauthorized once, from day 4 to day 29. Once the first 3 days are over, whatever is still
+     * held is reauthorized, and later captures and the void use the new authorization.
+     * Returns false when there is nothing to do.
+     */
+    async reauthorizeHold(id: string) {
+      const prepared = await db.transaction(async (tx) => {
+        const m = await find(tx, id, true);
+        if (!HOLD_ALIVE.includes(m.status) || !m.paypalAuthorizationId || !m.fundedAt) return undefined;
+        const age = now().getTime() - m.fundedAt.getTime();
+        if (age < HONOR_DAYS * DAY || age >= REAUTHORIZE_UNTIL_DAYS * DAY) return undefined;
+        const all = await moves(tx, id);
+        const pending = all.find((mv) => mv.status === "pending");
+        if (pending) return pending.kind === "reauthorization" ? { m, move: resume(id, "reauthorize", m.status, pending, "reauthorization") } : undefined;
+        if (all.some((mv) => mv.kind === "reauthorization" && mv.status === "completed")) return undefined;
+        const { available } = moneyTotals(all);
+        if (available <= 0) return undefined;
+        const [move] = await tx
+          .insert(t.moneyMoves)
+          .values({ milestoneId: id, kind: "reauthorization", amountCents: available, requestId: `reauthorize-${id}`, note: "Kept the hold alive past PayPal's 3-day honor period", createdAt: now() })
+          .returning();
+        return { m, move };
+      });
+      if (!prepared) return false;
+      const { m, move } = prepared;
+      const auth = await send(move, () => paypal.reauthorizeAuthorization(m.paypalAuthorizationId!, { cents: move.amountCents, requestId: move.requestId }));
+      await db.transaction(async (tx) => {
+        await tx.update(t.moneyMoves).set({ status: "completed", paypalId: auth.id, completedAt: now() }).where(eq(t.moneyMoves.id, move.id));
+        await tx
+          .update(t.milestones)
+          .set({ paypalAuthorizationId: auth.id, authorizationExpiresAt: auth.expirationTime ? new Date(auth.expirationTime) : null, updatedAt: now() })
+          .where(eq(t.milestones.id, id));
+        await log(tx, id, "system", "hold_reauthorized", { from: m.paypalAuthorizationId, authorizationId: auth.id, amountCents: move.amountCents });
+      });
+      return true;
+    },
+
+    /**
+     * The timer job (a scheduled call to /api/cron/due runs it): releases verified work when a review
+     * window ends, returns the rest when a fix window ends, and reauthorizes holds past PayPal's
+     * honor period. One failure does not stop the others.
      */
     async runDueJobs() {
       const at = now();
-      const [releases, voids] = await Promise.all([
+      const [releases, voids, aging] = await Promise.all([
         db.select({ id: t.milestones.id }).from(t.milestones).where(and(eq(t.milestones.status, "awaiting_decision"), lte(t.milestones.decisionDueAt, at))),
         db.select({ id: t.milestones.id }).from(t.milestones).where(and(eq(t.milestones.status, "fix_window"), lte(t.milestones.fixDueAt, at))),
+        db
+          .select({ id: t.milestones.id })
+          .from(t.milestones)
+          .where(and(inArray(t.milestones.status, HOLD_ALIVE), lte(t.milestones.fundedAt, new Date(at.getTime() - HONOR_DAYS * DAY)), gt(t.milestones.fundedAt, new Date(at.getTime() - REAUTHORIZE_UNTIL_DAYS * DAY)))),
       ]);
-      const done: { id: string; job: "auto_release" | "void"; ok: boolean; error?: string }[] = [];
+      const done: { id: string; job: "auto_release" | "void" | "reauthorize"; ok: boolean; error?: string }[] = [];
       for (const { id } of releases) {
         await service.autoRelease(id).then(
           () => done.push({ id, job: "auto_release", ok: true }),
@@ -687,6 +750,13 @@ export function createMilestoneService(deps: { db: Db; paypal: PaymentGateway; n
         await service.voidRemainder(id).then(
           () => done.push({ id, job: "void", ok: true }),
           (e: unknown) => done.push({ id, job: "void", ok: false, error: errorJson(e).message }),
+        );
+      }
+      // Last, so a hold that was just released or returned is not reauthorized first.
+      for (const { id } of aging) {
+        await service.reauthorizeHold(id).then(
+          (acted) => (acted ? done.push({ id, job: "reauthorize", ok: true }) : undefined),
+          (e: unknown) => done.push({ id, job: "reauthorize", ok: false, error: errorJson(e).message }),
         );
       }
       return done;

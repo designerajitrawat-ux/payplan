@@ -100,4 +100,31 @@ describe("PayPal webhook", () => {
     const view = await getMilestoneFor(s, ws, created.id);
     expect(view.events.at(-1)).toMatchObject({ actor: "paypal", type: "dispute_created", detail: { disputeId: "PP-D-1" } });
   });
+
+  it("answers a new dispute with the signed report as a PDF through the Disputes API", async () => {
+    const ws = "ws_dispute_00000000000002";
+    const created = await createMilestoneFor(s, ws, body);
+    const { order } = await runAction(s, ws, created.id, { action: "start_funding" });
+    await runAction(s, ws, created.id, { action: "simulate_approval", orderId: order!.id });
+    await runAction(s, ws, created.id, { action: "complete_funding", orderId: order!.id });
+    await runAction(s, ws, created.id, { action: "submit", url: "https://x.example" });
+    await runAction(s, ws, created.id, { action: "record_verdict", results: created.criteria.map((c) => ({ criterionId: c.id, verdict: "pass", confidence: 0.9, evidence: "HTTP 200", reason: "Shown" })) });
+    const { milestone } = await runAction(s, ws, created.id, { action: "accept" });
+    const captureId = milestone.moneyMoves.find((m) => m.kind === "capture")!.paypalId;
+
+    const sent: { disputeId: string; name: string; head: string }[] = [];
+    const paypalClient = {
+      verifyWebhookSignature: async () => true,
+      provideDisputeEvidence: async (disputeId: string, input: { notes: string; file: { name: string; data: Blob } }) => {
+        sent.push({ disputeId, name: input.file.name, head: (await input.file.data.text()).slice(0, 8) });
+        return {};
+      },
+    } as unknown as Services["paypalClient"];
+    const real = { ...s, paypalClient, webhookId: "WH-ID", appUrl: "https://payplan.test" };
+    const res = await handleWebhook(real, new Headers(), event("WH-DISPUTE-2", "CUSTOMER.DISPUTE.CREATED", { dispute_id: "PP-D-2", reason: "MERCHANDISE_OR_SERVICE_NOT_AS_DESCRIBED", status: "WAITING_FOR_SELLER_RESPONSE", disputed_transactions: [{ seller_transaction_id: captureId }] }));
+    expect(res.body).toMatchObject({ ok: true, applied: true, evidenceSent: true });
+    expect(sent).toEqual([{ disputeId: "PP-D-2", name: expect.stringMatching(/^payplan-report-[0-9a-f]{8}\.pdf$/), head: "%PDF-1.4" }]);
+    const view = await getMilestoneFor(s, ws, created.id);
+    expect(view.events.at(-1)).toMatchObject({ actor: "paypal", type: "dispute_evidence_sent", detail: { disputeId: "PP-D-2" } });
+  });
 });

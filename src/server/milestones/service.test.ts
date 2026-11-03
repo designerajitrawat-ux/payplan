@@ -12,10 +12,10 @@ beforeAll(async () => {
 
 const HOUR = 3_600_000;
 
-function setup() {
+function setup(options: { payeeEmail?: string } = {}) {
   const clock = { t: Date.parse("2026-10-20T10:00:00Z") };
   const pp = createSimulatedPayPal();
-  const svc = createMilestoneService({ db, paypal: pp.gateway, now: () => new Date(clock.t) });
+  const svc = createMilestoneService({ db, paypal: pp.gateway, now: () => new Date(clock.t), ...options });
   return { svc, pp, clock };
 }
 
@@ -96,6 +96,14 @@ describe("funding", () => {
     const view = await svc.getMilestone(id);
     expect(view.totals).toMatchObject({ authorized: 80000, held: 80000, captured: 0 });
     expect(view.paypalAuthorizationId).toMatch(/^AUTH-/);
+  });
+
+  it("names the freelancer's PayPal as the payee, so the money never passes through the platform", async () => {
+    const { svc, pp } = setup({ payeeEmail: "riya@business.example.com" });
+    const id = await svc.createMilestone(landingPage());
+    expect((await svc.getMilestone(id)).freelancerPaypalEmail).toBe("riya@business.example.com");
+    await svc.startFunding(id);
+    expect(pp.calls.find((x) => x.method === "createAuthorizeOrder")?.args[0]).toMatchObject({ payeeEmail: "riya@business.example.com" });
   });
 
   it("refuses an order that belongs to another milestone", async () => {
@@ -259,6 +267,34 @@ describe("timers, appeals and guards", () => {
     const view = await ctx.svc.getMilestone(id);
     expect(view.status).toBe("released");
     expect(view.events.at(-1)).toMatchObject({ type: "released", actor: "system" });
+  });
+
+  it("reauthorizes what is still held once PayPal's 3-day honor period ends, and pays the fix from the new hold", async () => {
+    const ctx = setup();
+    const id = await fundedAndSubmitted(ctx, landingPage({ fixWindowHours: 168 }));
+    await ctx.svc.recordReport(id, { model: "test", results: [result(c(id, 1), "pass"), result(c(id, 2), "pass"), result(c(id, 3), "fail"), result(c(id, 4), "pass")] });
+    await ctx.svc.acceptRelease(id);
+    const first = (await ctx.svc.getMilestone(id)).paypalAuthorizationId!;
+
+    ctx.clock.t += 2 * 24 * HOUR;
+    expect(await ctx.svc.runDueJobs()).not.toContainEqual(expect.objectContaining({ id }));
+
+    ctx.clock.t += 2 * 24 * HOUR;
+    expect(await ctx.svc.runDueJobs()).toContainEqual({ id, job: "reauthorize", ok: true });
+    let view = await ctx.svc.getMilestone(id);
+    expect(view.paypalAuthorizationId).not.toBe(first);
+    expect(view.moneyMoves.at(-1)).toMatchObject({ kind: "reauthorization", status: "completed", amountCents: 20000, paypalId: view.paypalAuthorizationId });
+    expect(view.totals).toMatchObject({ captured: 60000, held: 20000 });
+    expect(view.events.at(-1)).toMatchObject({ type: "hold_reauthorized", actor: "system" });
+
+    // PayPal allows it once: the next run leaves the milestone alone.
+    expect(await ctx.svc.runDueJobs()).not.toContainEqual(expect.objectContaining({ id }));
+
+    await ctx.svc.submitWork(id, { url: "https://northwind.example", note: "Fixed" });
+    await ctx.svc.recordReport(id, { model: "test", results: [1, 2, 3, 4].map((i) => result(c(id, i), "pass")) });
+    view = await ctx.svc.getMilestone(id);
+    expect(view.status).toBe("released");
+    expect(ctx.pp.holds.get(view.paypalAuthorizationId!)).toMatchObject({ amount: 20000, captured: 20000, closed: true });
   });
 
   it("freezes money during an appeal", async () => {

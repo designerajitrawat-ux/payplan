@@ -52,14 +52,15 @@ Copy `.env.example` to `.env.local` to set keys. Never commit real values.
 
 | Step | PayPal API |
 |---|---|
-| Client locks the milestone | `POST /v2/checkout/orders` (intent `AUTHORIZE`), approved with the PayPal JS SDK v6 button, then `POST /v2/checkout/orders/{id}/authorize` |
-| Verified share released | `POST /v2/payments/authorizations/{id}/capture` with `final_capture: false` (partial) |
+| Client locks the milestone | `POST /v2/checkout/orders` (intent `AUTHORIZE`, `payee.email_address` = the freelancer's PayPal), approved with the PayPal JS SDK v6 button, then `POST /v2/checkout/orders/{id}/authorize` |
+| Verified share released | `POST /v2/payments/authorizations/{id}/capture` with `final_capture: false` (partial). The money lands in the freelancer's PayPal; PayPlan's account never holds it |
 | Last share released | the same call with `final_capture: true` |
 | Fix window ends | `POST /v2/payments/authorizations/{id}/void` |
-| Long jobs | `POST /v2/payments/authorizations/{id}/reauthorize` |
-| Team splits | `POST /v1/payments/payouts` |
-| Disputes | `POST /v1/customer/disputes/{id}/provide-evidence` with the signed report |
+| Long jobs | once PayPal's 3-day honor period is over, the timer job calls `POST /v2/payments/authorizations/{id}/reauthorize` for what is still held, and later captures use the new authorization |
+| Disputes | when a dispute reaches PayPlan's webhook, `POST /v1/customer/disputes/{id}/provide-evidence` with the signed report as a PDF. A dispute on the freelancer's own account is answered with the same PDF (`/api/reports/{hash}/pdf`) in PayPal's Resolution Center |
 | Events | webhooks, checked with `POST /v1/notifications/verify-webhook-signature` |
+
+The timer job (`/api/cron/due`) runs daily through Vercel Cron (`vercel.json`), and every 30 minutes from the GitHub Action when its secrets are set.
 
 The app takes these precautions:
 - **No double charges.** Every money move is saved as "pending" with its `PayPal-Request-Id` *before* PayPal is called. A double click, a crash or a lost reply re-sends the same key, so PayPal never moves money twice. Tests cover all three.

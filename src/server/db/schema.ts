@@ -44,7 +44,7 @@ export const milestones = pgTable(
     freelancerName: text("freelancer_name").notNull(),
     freelancerEmail: text("freelancer_email").notNull(),
     freelancerLocation: text("freelancer_location").notNull().default(""),
-    /** Where the money goes when the freelancer is paid through Payouts (agency splits). */
+    /** The freelancer's PayPal: the order names it as payee, so captures land there directly. */
     freelancerPaypalEmail: text("freelancer_paypal_email"),
     boughtByAgent: boolean("bought_by_agent").notNull().default(false),
     amountCents: integer("amount_cents").notNull(),

@@ -3,6 +3,8 @@
 import { eq } from "drizzle-orm";
 import type { Services } from "../app";
 import { webhookEvents } from "../db/schema";
+import { errorJson } from "../milestones/service";
+import { reportPdf } from "../reports/pdf";
 
 type PayPalEvent = {
   id: string;
@@ -11,6 +13,29 @@ type PayPalEvent = {
 };
 
 export type WebhookResult = { status: number; body: Record<string, unknown> };
+
+/**
+ * A dispute opened on one of our captures reached us: answer it through the Disputes API with the
+ * signed acceptance report as a PDF. A dispute on the freelancer's own PayPal account never reaches
+ * PayPlan; there the freelancer attaches the same PDF in PayPal's Resolution Center.
+ */
+async function sendEvidence(s: Services, milestoneId: string, disputeId: string) {
+  if (!s.paypalClient) return false;
+  const report = await s.milestones.latestVerifiedReport(milestoneId);
+  if (!report?.valid) return false;
+  const pdf = reportPdf(report, `${s.appUrl ?? ""}/r/${report.reportHash}`);
+  try {
+    await s.paypalClient.provideDisputeEvidence(disputeId, {
+      notes: "The client and freelancer agreed these acceptance criteria before any money moved. The attached report, signed by PayPlan, shows what was checked, the evidence, and the share PayPal captured for the criteria that passed.",
+      file: { name: `payplan-report-${report.reportHash.slice(0, 8)}.pdf`, data: new Blob([Buffer.from(pdf)], { type: "application/pdf" }) },
+    });
+    await s.milestones.notePayPalEvent(milestoneId, "dispute_evidence_sent", { disputeId, reportHash: report.reportHash });
+    return true;
+  } catch (error) {
+    await s.milestones.notePayPalEvent(milestoneId, "dispute_evidence_failed", { disputeId, ...errorJson(error) });
+    return false;
+  }
+}
 
 /** Captures and holds point back to a milestone through our invoice id and PayPal's ids. */
 async function apply(s: Services, event: PayPalEvent) {
@@ -39,7 +64,9 @@ async function apply(s: Services, event: PayPalEvent) {
       const tx = (r.disputed_transactions as { seller_transaction_id?: string; invoice_number?: string }[] | undefined)?.[0];
       const id = await svc.findByPayPalId({ captureId: tx?.seller_transaction_id });
       const type = `dispute_${event.event_type.split(".").at(-1)!.toLowerCase()}`;
-      return { applied: id ? await svc.notePayPalEvent(id, type, { disputeId: r.dispute_id, reason: r.reason, status: r.status, eventId: event.id }) : false };
+      const applied = id ? await svc.notePayPalEvent(id, type, { disputeId: r.dispute_id, reason: r.reason, status: r.status, eventId: event.id }) : false;
+      const evidenceSent = id && event.event_type === "CUSTOMER.DISPUTE.CREATED" && typeof r.dispute_id === "string" ? await sendEvidence(s, id, r.dispute_id) : false;
+      return { applied, evidenceSent };
     }
     default:
       return { applied: false };

@@ -21,6 +21,8 @@ export type Services = {
   simulated?: ReturnType<typeof createSimulatedPayPal>;
   milestones: MilestoneService;
   webhookId?: string;
+  /** This deployment's public address, for links in dispute evidence. */
+  appUrl?: string;
   judge: Judge;
   /** Settings for the checker's real tests. */
   checker: CheckerOptions;
@@ -36,15 +38,18 @@ export async function buildServices(env: Record<string, string | undefined> = pr
   const db = await createDb(env);
   const database = env.DATABASE_URL ? "postgres" : "embedded";
   const checker: CheckerOptions = { pagespeedKey: env.PAGESPEED_API_KEY, allowPrivate: env.NODE_ENV !== "production" || env.ALLOW_PRIVATE_URLS === "1" };
-  const common = { db, database, judge: judgeFromEnv(env), checker, demoControls: env.DEMO_TIME_CONTROLS !== "off" } as const;
+  const appUrl = env.APP_URL || (env.VERCEL_PROJECT_PRODUCTION_URL ? `https://${env.VERCEL_PROJECT_PRODUCTION_URL}` : undefined);
+  const common = { db, database, appUrl, judge: judgeFromEnv(env), checker, demoControls: env.DEMO_TIME_CONTROLS !== "off" } as const;
   const signer = signerFromEnv(env);
+  // The freelancer's PayPal, paid straight from the client's hold. Local runs reuse the test business account.
+  const payeeEmail = env.PAYPAL_PAYEE_EMAIL || env.PAYPAL_IN_BUSINESS_EMAIL || undefined;
   if (env.PAYPAL_CLIENT_ID && env.PAYPAL_CLIENT_SECRET && env.PAYPAL_ENV !== "simulated") {
     const paypalMode = env.PAYPAL_ENV === "live" ? "live" : "sandbox";
     const paypalClient = createPayPalClient({ clientId: env.PAYPAL_CLIENT_ID, clientSecret: env.PAYPAL_CLIENT_SECRET, env: paypalMode });
-    return { ...common, paypalMode, paypal: paypalClient, paypalClient, milestones: createMilestoneService({ db, paypal: paypalClient, signer }), webhookId: env.PAYPAL_WEBHOOK_ID };
+    return { ...common, paypalMode, paypal: paypalClient, paypalClient, milestones: createMilestoneService({ db, paypal: paypalClient, signer, payeeEmail }), webhookId: env.PAYPAL_WEBHOOK_ID };
   }
   const simulated = createSimulatedPayPal();
-  return { ...common, paypalMode: "simulated", paypal: simulated.gateway, simulated, milestones: createMilestoneService({ db, paypal: simulated.gateway, signer }) };
+  return { ...common, paypalMode: "simulated", paypal: simulated.gateway, simulated, milestones: createMilestoneService({ db, paypal: simulated.gateway, signer, payeeEmail }) };
 }
 
 const holder = globalThis as unknown as { __payplanServices?: Promise<Services> };

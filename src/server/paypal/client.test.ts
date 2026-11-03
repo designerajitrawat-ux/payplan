@@ -108,6 +108,12 @@ describe("orders and authorizations", () => {
     });
   });
 
+  it("names the freelancer's PayPal as the payee, so captures never pass through the platform", async () => {
+    const fake = fakePayPal([{ status: 201, body: { id: "ORDER-3", status: "CREATED", links: [] } }]);
+    await client(fake).createAuthorizeOrder({ cents: 100000, description: "x", customId: "m-1", payeeEmail: "riya@business.example.com" });
+    expect(fake.calls[1].body).toMatchObject({ purchase_units: [{ payee: { email_address: "riya@business.example.com" } }] });
+  });
+
   it("falls back to the older approve link", async () => {
     const fake = fakePayPal([{ status: 201, body: { id: "ORDER-2", status: "CREATED", links: [{ rel: "approve", href: "https://approve" }] } }]);
     const order = await client(fake).createAuthorizeOrder({ cents: 100, description: "x", customId: "m-1" });
@@ -179,15 +185,7 @@ describe("errors and retries", () => {
   });
 });
 
-describe("payouts, webhooks, disputes", () => {
-  it("sends a payout batch keyed by the batch id", async () => {
-    const fake = fakePayPal([{ status: 201, body: { batch_header: { payout_batch_id: "BATCH-1", batch_status: "PENDING" } } }]);
-    const res = await client(fake).createPayout({ senderBatchId: "split-m-1042", subject: "You got paid", items: [{ receiver: "dev@example.com", cents: 30000, senderItemId: "m-1042-dev" }] });
-    expect(res).toEqual({ batchId: "BATCH-1", status: "PENDING" });
-    expect(fake.calls[1].headers["PayPal-Request-Id"]).toBe("split-m-1042");
-    expect(fake.calls[1].body).toMatchObject({ items: [{ recipient_type: "EMAIL", receiver: "dev@example.com", amount: { value: "300.00" } }] });
-  });
-
+describe("webhooks, disputes", () => {
   it("verifies a webhook signature with PayPal", async () => {
     const fake = fakePayPal([{ status: 200, body: { verification_status: "SUCCESS" } }, { status: 200, body: { verification_status: "FAILURE" } }]);
     const pp = client(fake);

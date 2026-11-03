@@ -1,6 +1,6 @@
 // PayPal REST client for the server. Covers exactly what PayPlan moves money with:
-// Orders v2 (AUTHORIZE), Payments v2 (capture, void, reauthorize), Payouts v1, webhook
-// signature checks and dispute evidence. Uses fetch only, so it runs on Vercel and in tests.
+// Orders v2 (AUTHORIZE), Payments v2 (capture, void, reauthorize), webhook signature checks
+// and dispute evidence. Uses fetch only, so it runs on Vercel and in tests.
 
 import { randomUUID } from "node:crypto";
 import { amount, valueToCents, type Currency } from "./money";
@@ -55,6 +55,8 @@ export type AuthorizeOrderInput = {
   invoiceId?: string;
   /** Pay a specific merchant directly (multiparty); omit to pay the platform account. */
   payeeMerchantId?: string;
+  /** The freelancer's PayPal: captures land there directly, never in the platform's account. */
+  payeeEmail?: string;
   returnUrl?: string;
   cancelUrl?: string;
   requestId?: string;
@@ -68,15 +70,6 @@ export type Authorization = {
 };
 
 export type Capture = { id: string; status: string; cents: number; finalCapture: boolean };
-
-export type PayoutItem = {
-  receiver: string;
-  cents: number;
-  currency?: Currency;
-  note?: string;
-  senderItemId: string;
-  recipientType?: "EMAIL" | "PAYPAL_ID";
-};
 
 export function createPayPalClient(config: PayPalConfig) {
   const env = config.env ?? "sandbox";
@@ -173,7 +166,7 @@ export function createPayPalClient(config: PayPalConfig) {
               invoice_id: input.invoiceId,
               description: input.description.slice(0, 127),
               amount: amount(input.cents, input.currency),
-              ...(input.payeeMerchantId ? { payee: { merchant_id: input.payeeMerchantId } } : {}),
+              ...(input.payeeMerchantId ? { payee: { merchant_id: input.payeeMerchantId } } : input.payeeEmail ? { payee: { email_address: input.payeeEmail } } : {}),
             },
           ],
           // "Continue", not "Pay Now": approving only places a hold. No shipping for a service.
@@ -238,24 +231,6 @@ export function createPayPalClient(config: PayPalConfig) {
           json: { amount: amount(input.cents, input.currency) },
         }),
       );
-    },
-
-    /** Splits money to several people (agency teams). The sender must not be an India account. */
-    async createPayout(input: { senderBatchId: string; subject: string; items: PayoutItem[] }) {
-      const res = await request<{ batch_header: { payout_batch_id: string; batch_status: string } }>("POST", "/v1/payments/payouts", {
-        requestId: input.senderBatchId,
-        json: {
-          sender_batch_header: { sender_batch_id: input.senderBatchId, email_subject: input.subject },
-          items: input.items.map((i) => ({
-            recipient_type: i.recipientType ?? "EMAIL",
-            receiver: i.receiver,
-            amount: amount(i.cents, i.currency),
-            note: i.note,
-            sender_item_id: i.senderItemId,
-          })),
-        },
-      });
-      return { batchId: res.batch_header.payout_batch_id, status: res.batch_header.batch_status };
     },
 
     /** Asks PayPal whether a webhook really came from PayPal. Never trust an unverified event. */

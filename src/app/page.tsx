@@ -5,24 +5,23 @@ import { Bento, InView, Marquee, ProductWindow, ScrollLit, StoryScroll, WordReve
 
 const platform = [
   "Orders v2 · AUTHORIZE",
+  "Payee: the freelancer's PayPal",
   "Payments v2 · partial capture",
   "Void",
   "Reauthorize",
-  "Payouts",
   "Disputes · evidence",
   "Webhooks",
   "MCP agent tools",
   "AI rubric",
-  "Headless browser checks",
+  "PageSpeed mobile audit",
 ];
 
 const paypalParts = [
-  { api: "Orders v2 · AUTHORIZE", use: "Locks the milestone on the client's own PayPal" },
+  { api: "Orders v2 · AUTHORIZE", use: "Locks the milestone on the client's own PayPal, payable straight to the freelancer" },
   { api: "Payments v2 · partial capture", use: "Releases one criterion's share at a time" },
-  { api: "Void and reauthorize", use: "Returns unverified money, keeps long jobs alive" },
-  { api: "Payouts", use: "Splits agency work across team members" },
-  { api: "Disputes · evidence", use: "Sends the signed report if a dispute opens" },
-  { api: "Webhooks", use: "Moves each milestone when PayPal confirms" },
+  { api: "Void and reauthorize", use: "Returns unverified money, and keeps a long job's hold alive past day 3" },
+  { api: "Disputes · evidence", use: "Answers a dispute with the signed report as a PDF" },
+  { api: "Webhooks", use: "Confirms captures and catches disputes as PayPal reports them" },
 ];
 
 const labelTones = {

@@ -58,6 +58,12 @@ export default async function VerifyReportPage({ params }: { params: Promise<{ h
           ))}
         </ul>
         <p className="mt-5 break-all font-mono text-xs text-dim">Report id (SHA-256) {r.reportHash}</p>
+        <a
+          href={`/api/reports/${r.reportHash}/pdf`}
+          className="press volt-fill mt-5 inline-flex h-11 items-center gap-2 rounded-full bg-brand px-5 text-sm font-semibold text-white [--lip-color:#0f249e] hover:bg-[#3557ff]"
+        >
+          Download the PDF for a PayPal dispute
+        </a>
       </Panel>
 
       <Panel>

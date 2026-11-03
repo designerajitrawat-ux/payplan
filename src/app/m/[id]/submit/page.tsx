@@ -97,7 +97,7 @@ function SubmitForm({ m }: { m: Milestone }) {
         <Panel>
           <h2 className="font-display text-lg font-semibold">{fixing ? "Your fix" : "Hand over the work"}</h2>
           <div className="mt-5 space-y-5">
-            <Field label="Live URL" hint="The checker opens it in a real browser and takes its own screenshots.">
+            <Field label="Live URL" hint="The checker opens it, runs its tests, and gets a phone screenshot and mobile audit from Google PageSpeed.">
               <input className={inputClass} value={url} onChange={(e) => setUrl(e.target.value)} />
             </Field>
             <Field label="GitHub pull request (optional)">
