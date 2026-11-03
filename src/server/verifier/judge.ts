@@ -128,12 +128,17 @@ export function createRulesJudge(): Judge {
       if (NEEDS.mobile.test(title) || NEEDS.speed.test(title)) {
         const p = input.extra?.pagespeed;
         if (!p || "unavailable" in p) return toPerson(p && "unavailable" in p ? p.unavailable : "No mobile audit");
+        // A title can name both tests, as "mobile performance score of 80" does: every test it names must pass.
+        // The target is the first two- or three-digit number that is not a width in px.
+        const target = Number(title.match(/\b(\d{2,3})\b(?!\s*px)/)?.[1] ?? 90);
+        const speed = NEEDS.speed.test(title);
+        if (speed && p.performance < target) return { verdict: "fail", confidence: 0.95, evidence: `PageSpeed mobile performance ${p.performance}/100`, reason: `Needed ${target} or more.` };
         if (NEEDS.mobile.test(title)) {
           const ok = p.viewport && p.contentWidth;
-          return { verdict: ok ? "pass" : "fail", confidence: 0.95, evidence: `PageSpeed mobile: viewport ${p.viewport ? "ok" : "failed"}, content fits ${p.contentWidth ? "yes" : "no"}`, reason: ok ? "The page fits a phone screen." : "The page does not fit a phone screen." };
+          const score = speed ? `performance ${p.performance}/100, ` : "";
+          return { verdict: ok ? "pass" : "fail", confidence: 0.95, evidence: `PageSpeed mobile: ${score}viewport ${p.viewport ? "ok" : "failed"}, content fits ${p.contentWidth ? "yes" : "no"}`, reason: ok ? (speed ? `Scored ${target} or more and fits a phone screen.` : "The page fits a phone screen.") : "The page does not fit a phone screen." };
         }
-        const target = Number(title.match(/\b(\d{2,3})\b/)?.[1] ?? 90);
-        return { verdict: p.performance >= target ? "pass" : "fail", confidence: 0.95, evidence: `PageSpeed mobile performance ${p.performance}/100`, reason: `Needed ${target} or more.` };
+        return { verdict: "pass", confidence: 0.95, evidence: `PageSpeed mobile performance ${p.performance}/100`, reason: `Needed ${target} or more.` };
       }
       if (NEEDS.live.test(title)) {
         const httpsNeeded = /https/i.test(title);
