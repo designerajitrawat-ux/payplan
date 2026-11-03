@@ -157,7 +157,7 @@ export function SpecBuilder() {
           <h1 className="mt-2 font-display text-4xl font-semibold tracking-tight font-stretch-semi-expanded">New milestone</h1>
           <p className="mt-2 text-mute">Agree on what &quot;done&quot; means before any money moves.</p>
         </div>
-        <RoleChip role="freelancer" name="Riya" />
+        <RoleChip role="freelancer" name="Ajit" />
       </div>
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
@@ -381,7 +381,7 @@ export function SpecBuilder() {
 
       {demo ? (
         <DemoGuide step={1}>
-          You are <strong>Riya, the freelancer</strong>. Press <strong>Draft criteria with AI</strong>, check the weights add up to 100%, then press <strong>Create and get funding link</strong>.
+          You are <strong>Ajit, the freelancer</strong>. Press <strong>Draft criteria with AI</strong>, check the weights add up to 100%, then press <strong>Create and get funding link</strong>.
         </DemoGuide>
       ) : null}
     </div>

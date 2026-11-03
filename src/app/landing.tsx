@@ -211,7 +211,7 @@ export function MiniVerifier() {
                 </motion.span>
               ) : null}
             </AnimatePresence>
-            <p className="text-xs text-dim">Released to Riya</p>
+            <p className="text-xs text-dim">Released to Ajit</p>
             <p className="font-sans text-2xl font-semibold text-mint sm:text-3xl">
               <NumberTicker value={released} duration={600} />
             </p>

@@ -33,9 +33,9 @@ Copy `.env.example` to `.env.local` to set keys. Never commit real values.
 
 ### The walkthrough
 
-1. **Riya (freelancer)** pastes the client's brief. The AI drafts acceptance criteria with weights and must-pass gates; she edits and creates the milestone. The agreed spec gets a SHA-256 **Agreement ID**.
+1. **Ajit (freelancer)** pastes the client's brief. The AI drafts acceptance criteria with weights and must-pass gates, which the freelancer edits before creating the milestone. The agreed spec gets a SHA-256 **Agreement ID**.
 2. **Sam (client)** picks who approves releases (himself, or his AI agent within its limits) and approves a PayPal **authorization hold**.
-3. Riya submits the work. In the walkthrough it is a sample client site served by this app at `/demo/northwind/v1`; its contact form is broken on purpose.
+3. Ajit submits the work. In the walkthrough it is a sample client site served by this app at `/demo/northwind/v1`; its contact form is broken on purpose.
 4. The **checker** runs live and saves every step to the log:
    - opens the URL
    - sends a test message through the form
@@ -43,7 +43,7 @@ Copy `.env.example` to `.env.local` to set keys. Never commit real values.
    - asks the AI about the rest
    - signs the report
 5. Sam's **agent** works through its mandate (go / no-go) and captures the verified share, or hands the decision back. With manual approval, Sam holds a button to release, or appeals to a person.
-6. Riya submits the fix (`/demo/northwind/v2`). Only what failed is checked again, and the rest is captured automatically.
+6. Ajit submits the fix (`/demo/northwind/v2`). Only what failed is checked again, and the rest is captured automatically.
 7. **Demo buttons** end a review or fix window early, so you can see the timer rules without waiting days:
    - the verified share is released when the client stays silent
    - the rest of the hold is voided when the fix window ends

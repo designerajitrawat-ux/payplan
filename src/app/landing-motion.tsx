@@ -124,10 +124,10 @@ export function ProductWindow() {
             <div className="grid gap-4 rounded-2xl border border-white/[0.06] bg-white/[0.02] p-4 md:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] md:items-center">
               <div>
                 <p className="font-sans text-4xl font-semibold tracking-tight text-ink font-stretch-semi-expanded sm:text-5xl">$800.00</p>
-                <p className="mt-1 text-sm text-mute">can be released to Riya</p>
+                <p className="mt-1 text-sm text-mute">can be released to Ajit</p>
                 <p className="mt-3 text-xs text-dim">4 of 5 criteria passed · $200.00 waits for a fix</p>
               </div>
-              <MoneyLock amount="$1,000" caption="5 criteria on hold" slices={shotSlices} locked releasing={false} agent client={{ label: "Sam's PayPal", value: "$1,000" }} freelancer={{ label: "Riya · Pune", value: "$0" }} />
+              <MoneyLock amount="$1,000" caption="5 criteria on hold" slices={shotSlices} locked releasing={false} agent client={{ label: "Sam's PayPal", value: "$1,000" }} freelancer={{ label: "Ajit · India", value: "$0" }} />
             </div>
             <div className="grid gap-2 sm:grid-cols-3">
               {shotRows.map((r) => (
@@ -320,7 +320,7 @@ export function Bento() {
               <p className="font-sans text-3xl font-semibold text-mint font-stretch-semi-expanded">
                 <NumberTicker value={released ? 800 : 0} duration={900} />
               </p>
-              <p className="text-xs text-dim">{released ? "Captured on PayPal" : "Released to Riya"}</p>
+              <p className="text-xs text-dim">{released ? "Captured on PayPal" : "Released to Ajit"}</p>
             </div>
             {released ? (
               <button type="button" onClick={() => setReleased(false)} className="text-xs text-dim underline-offset-4 hover:text-ink hover:underline">

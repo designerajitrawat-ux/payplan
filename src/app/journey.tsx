@@ -176,7 +176,7 @@ export function Journey({ intro }: { intro: ReactNode }) {
               <NumberTicker value={hud.held} duration={500} className="text-sm font-semibold text-ice sm:text-lg" />
             </div>
             <div className="mt-1.5 flex items-baseline justify-between gap-2">
-              <span className="text-[11px] text-white/75 sm:text-xs">Released to Riya</span>
+              <span className="text-[11px] text-white/75 sm:text-xs">Released to Ajit</span>
               <NumberTicker value={hud.released} duration={500} className="text-sm font-semibold text-mint sm:text-lg" />
             </div>
           </div>

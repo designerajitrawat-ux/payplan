@@ -463,7 +463,7 @@ export function createJourneyScene(T: Three, canvas: HTMLCanvasElement, opts: { 
   pedestal.group.position.copy(pedBase);
   scene.add(pedestal.group);
   const pedTop = pedBase.clone().addScaledVector(UP, 1.75);
-  const pedSign = floatCard("Riya · freelancer", "PayPal", "#22e3a0");
+  const pedSign = floatCard("Ajit · freelancer", "PayPal", "#22e3a0");
   pedSign.position.copy(pedBase).addScaledVector(UP, 3.6);
   pedSign.lookAt(at(0.66, 0, pedSign.position.y - road.getPointAt(0.66).y));
   scene.add(pedSign);

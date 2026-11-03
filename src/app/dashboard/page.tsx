@@ -45,7 +45,7 @@ const tabs: { key: Filter; label: string }[] = [
   { key: "paid", label: "Paid" },
 ];
 
-/** What Riya has to do next, when the next move is hers. */
+/** What the freelancer has to do next, when the next move is theirs. */
 const yourTurn: Partial<Record<Milestone["status"], string>> = { funded: "deliver the work", fix_window: "submit the fix" };
 
 export default function Dashboard() {
@@ -69,7 +69,7 @@ export default function Dashboard() {
     <div className="min-w-0 space-y-8">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <Eyebrow>Riya Sharma · product designer, Pune</Eyebrow>
+          <Eyebrow>Ajit Singh Rawat · product designer, India</Eyebrow>
           <h1 className="mt-2 font-display text-4xl font-semibold tracking-tight font-stretch-semi-expanded">Milestones</h1>
         </div>
         <ButtonLink href="/new" className="group">
@@ -196,7 +196,7 @@ export default function Dashboard() {
             ) : milestones.length === 0 ? (
               <li className="rounded-3xl border border-dashed border-brand-2/25 p-8 text-center">
                 <p className="font-display text-lg font-semibold text-ink">No milestones yet</p>
-                <p className="mx-auto mt-2 max-w-sm text-sm text-mute">Take the guided walkthrough: you play both Riya and her client, and every money move is a real PayPal call.</p>
+                <p className="mx-auto mt-2 max-w-sm text-sm text-mute">Take the guided walkthrough: you play both Ajit, the freelancer, and the client, and every money move is a real PayPal call.</p>
                 <div className="mt-5 flex flex-wrap justify-center gap-3">
                   <ButtonLink href="/new?demo=1" className="group">
                     Start the walkthrough
@@ -234,8 +234,8 @@ export default function Dashboard() {
             ))}
           </ol>
           <div className="mt-5 flex items-center gap-2 border-t border-white/[0.06] pt-4 text-xs text-dim">
-            <Avatar name="Riya Sharma" kind="freelancer" size="sm" />
-            Signed in as Riya · freelancer
+            <Avatar name="Ajit Singh Rawat" kind="freelancer" size="sm" />
+            Signed in as Ajit · freelancer
           </div>
         </Panel>
       </div>
@@ -248,7 +248,7 @@ export default function Dashboard() {
         <DemoGuide step="tour" next={{ href: "/new?demo=1", label: "Start the walkthrough" }}>
           {milestones.some((m) => m.boughtByAgent)
             ? "These are example milestones. One was bought by Sam's AI agent, which released the verified 80% on its own. Start the walkthrough to create your own."
-            : "Start the walkthrough to follow one milestone from the brief to the money, as both Riya and her client."}
+            : "Start the walkthrough to follow one milestone from the brief to the money, as both Ajit, the freelancer, and the client."}
         </DemoGuide>
       ) : null}
     </div>
