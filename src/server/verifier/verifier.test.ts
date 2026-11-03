@@ -42,7 +42,7 @@ describe("evidence", () => {
   it("reads facts a judge should not have to guess", () => {
     const html = `<head><meta name="viewport" content="width=device-width, initial-scale=1"></head>
       <body><a style="background:#f59e0b;color:#0B1F1C">Join</a><div style="color:#F59E0B"></div><img src="a.png"><img src="b.png" alt="Logo">
-      <svg aria-label="Northwind compass logo" role="img"><circle r="13"/></svg><svg><title>Menu</title><path d="M0 0"/></svg><svg><path d="M1 1"/></svg>
+      <svg aria-label="Northwind compass logo" role="img"><circle r="13"/></svg><svg aria-label="Logo"></svg><svg><path d="M1 1"/></svg>
       <form method="post" action="/contact"><input name="name"><input name="email" type="email"><textarea name="message"></textarea><button>Send</button></form></body>`;
     expect(pageFacts(html, "https://n.example/landing")).toEqual({
       https: true,
@@ -51,7 +51,7 @@ describe("evidence", () => {
       colors: ["#F59E0B", "#0B1F1C"],
       images: 2,
       imagesWithoutAlt: 1,
-      graphics: ["Northwind compass logo", "Menu"],
+      graphics: 2,
       hero: { level: 0, headlines: [], actions: [] },
       insecure: [],
       steering: [],
@@ -141,7 +141,7 @@ describe("evidence", () => {
   });
 });
 
-const facts: PageFacts = { https: true, viewportMeta: true, forms: [], colors: [], images: 0, imagesWithoutAlt: 0, graphics: [], hero: { level: 0, headlines: [], actions: [] }, insecure: [], steering: [] };
+const facts: PageFacts = { https: true, viewportMeta: true, forms: [], colors: [], images: 0, imagesWithoutAlt: 0, graphics: 0, hero: { level: 0, headlines: [], actions: [] }, insecure: [], steering: [] };
 
 const input = (text: string, title = "Hero section says 'Book a demo'"): JudgeInput => ({
   criterion: { title, weight: 25, mustPass: false, check: "ai", evidence: "url" },
@@ -199,6 +199,13 @@ describe("LLM judge", () => {
     const competing = { ...split, evidence: { ...(split.evidence as Extract<JudgeInput["evidence"], { kind: "page" }>), facts: pageFacts("<h1>Save more</h1><h1 hidden>Spend less</h1>", "https://n.example") } };
     expect(await judge.judge(competing)).toMatchObject({ verdict: "review", reason: expect.stringMatching(/competing hero headlines/) });
     expect((await judge.judge({ ...competing, criterion: { ...competing.criterion, title: "Colours follow the style guide" } })).verdict).toBe("pass");
+  });
+
+  it("never passes a logo it could not see in a screenshot", async () => {
+    const { judge } = llm(answer('{"verdict":"pass","confidence":0.95,"evidence":"svg","reason":"ok"}'));
+    const logo = input("Northwind", "Uses the compass logo");
+    expect(await judge.judge(logo)).toMatchObject({ verdict: "review", reason: expect.stringMatching(/screenshot/) });
+    expect((await judge.judge({ ...logo, image: "data:image/png;base64,AAAA" })).verdict).toBe("pass");
   });
 });
 

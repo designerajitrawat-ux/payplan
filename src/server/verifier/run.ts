@@ -90,8 +90,8 @@ export async function runVerification(svc: MilestoneService, judge: Judge, id: s
       continue;
     }
     const extra = { form: NEEDS.form.test(c.title) ? form : undefined, pagespeed: NEEDS.mobile.test(c.title) || NEEDS.speed.test(c.title) || NEEDS.visual.test(c.title) ? pagespeed : undefined };
-    // Visual rubric criteria see the phone screenshot, and so does a mobile criterion the audit could not settle.
-    const image = (c.check === "ai" && NEEDS.visual.test(c.title)) || NEEDS.mobile.test(c.title) ? screenshot : undefined;
+    // Visual criteria see the phone screenshot, and so does a mobile criterion the audit could not settle.
+    const image = NEEDS.visual.test(c.title) || NEEDS.mobile.test(c.title) ? screenshot : undefined;
     const v = await judge.judge({ criterion: c, milestone: { title: m.title, brief: m.brief }, evidence, extra, image });
     results.push({ criterionId: c.id, ...v });
     await line({

@@ -90,11 +90,50 @@ button{font:inherit;font-weight:700;padding:14px;border:0;border-radius:10px;bac
 const UNUSED_TOKENS = `.text-teal{color:#0F766E}.bg-teal{background:#0F766E}.border-teal{border-color:#0F766E}
 .text-amber{color:#F59E0B}.bg-amber{background:#F59E0B}.border-amber{border-color:#F59E0B}`;
 
+// A page built for desktop only: it has the mobile viewport tag, but a fixed 1,120 px grid, so a phone cuts it off.
+const DESKTOP_ONLY = `<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Northwind · Budgeting for UPI and cards</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+*{box-sizing:border-box}
+body{margin:0;font-family:"Segoe UI",system-ui,sans-serif;background:#f7faf9;color:#0b1f1c}
+.wrap{width:1120px;margin:0 auto;padding:0 32px}
+header{display:flex;align-items:center;justify-content:space-between;height:76px}
+.brand{display:flex;align-items:center;gap:10px;font-size:22px;font-weight:700}
+nav a{margin-left:28px;color:#0b1f1c;text-decoration:none;font-weight:600}
+.hero{display:grid;grid-template-columns:560px 480px;gap:16px;padding:56px 0}
+h1{font-size:60px;line-height:1.05;margin:0 0 18px;color:#0F766E}
+.lead{font-size:20px;line-height:1.5;margin:0 0 26px}
+.cta{display:inline-block;background:#F59E0B;color:#0b1f1c;padding:16px 26px;border-radius:10px;font-weight:700;text-decoration:none}
+.card{background:#ffffff;border:1px solid #dce7e4;border-radius:16px;padding:28px;height:300px}
+.features{display:grid;grid-template-columns:340px 340px 340px;gap:18px;padding-bottom:56px}
+h2{font-size:22px;margin:0 0 8px;color:#0F766E}
+</style></head>
+<body>
+<div class="wrap">
+<header><span class="brand"><svg width="36" height="36" viewBox="0 0 36 36" role="img" aria-label="Northwind compass logo"><circle cx="18" cy="18" r="15" fill="none" stroke="#0F766E" stroke-width="3"/><path d="M18 6l5 12-5 12-5-12z" fill="#0F766E"/><path d="M18 6l5 12h-10z" fill="#F59E0B"/></svg>Northwind</span>
+<nav><a href="#how">How it works</a><a href="#pricing">Pricing</a><a href="#security">Security</a><a href="#blog">Blog</a><a href="#contact">Contact</a><a class="cta" href="#contact">Join the waitlist</a></nav></header>
+<div class="hero">
+<div><h1>Know where every rupee goes</h1>
+<p class="lead">Northwind sorts your UPI and card spending into simple categories, so the month never surprises you.</p>
+<a class="cta" href="#contact">Join the waitlist</a></div>
+<div class="card"><h2>This month</h2><p>Rent ₹18,000 · Groceries ₹6,240 · Fuel ₹3,100 · Eating out ₹4,870</p></div>
+</div>
+<div class="features">
+<div class="card"><h2>Automatic categories</h2><p>Every UPI payment and card swipe lands in a category as you pay.</p></div>
+<div class="card"><h2>Monthly limits</h2><p>Set a limit per category and get a nudge before you cross it.</p></div>
+<div class="card"><h2>Private by design</h2><p>Your data stays on your phone unless you choose to back it up.</p></div>
+</div>
+</div>
+</body></html>
+`;
+
 /** The HTML each phone screenshot in shots/ was rendered from (headless Chrome, mobile emulation at 412 × 823 like the PageSpeed audit). */
 export const SCREENS = {
   "logo-present": styled({ primary: "#0F766E", accent: "#F59E0B", logo: true }),
   "logo-missing": styled({ primary: "#0F766E", accent: "#F59E0B", logo: false }),
   "colours-unused": styled({ primary: "#2563EB", accent: "#DC2626", logo: true, tokens: UNUSED_TOKENS }),
+  "mobile-overflow": DESKTOP_ONLY,
 };
 
 const shot = (name: keyof typeof SCREENS) => `data:image/png;base64,${readFileSync(new URL(`./shots/${name}.png`, import.meta.url)).toString("base64")}`;
@@ -131,6 +170,12 @@ const audit = (performance: number, fits = true, screenshot?: string): PageSpeed
 function withShot(title: string, name: keyof typeof SCREENS): JudgeInput {
   const image = shot(name);
   return { criterion: criterion(title, "ai", "image"), milestone, evidence: page(SCREENS[name]), extra: { pagespeed: audit(93, true, image) }, image };
+}
+
+/** The mobile criterion as Lighthouse 13 reports it: a viewport verdict and a phone screenshot, but no content-width audit. */
+function onPhone(name: keyof typeof SCREENS): JudgeInput {
+  const image = shot(name);
+  return { criterion: criterion(MOBILE, "automatic"), milestone, evidence: page(SCREENS[name]), extra: { pagespeed: { performance: 94, viewport: true, screenshot: image } }, image };
 }
 
 export const CASES: EvalCase[] = [
@@ -274,6 +319,20 @@ export const CASES: EvalCase[] = [
     why: "Teal and amber are in the CSS (and lead the colour list) but nothing uses them; the screenshot shows blue headings and a red button.",
     expected: "fail",
     input: withShot(COLOURS, "colours-unused"),
+  },
+  {
+    id: "visual-phone-fits",
+    group: "visual",
+    why: "The audit found the mobile viewport but no longer measures whether content fits. The phone screenshot shows one column, readable text and nothing cut off.",
+    expected: "pass",
+    input: onPhone("logo-present"),
+  },
+  {
+    id: "visual-phone-cut-off",
+    group: "visual",
+    why: "The page has the mobile viewport tag, so the audit's viewport check passes, but it is a fixed 1,120 px desktop grid: the phone screenshot cuts off the headline, the text and the cards at the right edge.",
+    expected: "fail",
+    input: onPhone("mobile-overflow"),
   },
 
   // Function: things a tool can measure. The tools decide these without the AI.

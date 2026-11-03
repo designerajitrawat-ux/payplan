@@ -11,8 +11,8 @@ export type PageFacts = {
   colors: string[];
   images: number;
   imagesWithoutAlt: number;
-  /** Labels of inline SVG graphics (aria-label or a title), such as a logo drawn in SVG rather than loaded as an image. */
-  graphics: string[];
+  /** Inline SVG graphics that draw something, as a logo drawn in SVG rather than loaded as an image file. */
+  graphics: number;
   hero: Hero;
   /** Scripts, images, stylesheets, frames and media the page loads over plain http:// (mixed content on an HTTPS page). */
   insecure: string[];
@@ -193,10 +193,8 @@ export function pageFacts(html: string, pageUrl: string): PageFacts {
   const counts = new Map<string, number>();
   for (const [hex] of styles.matchAll(/#[0-9a-fA-F]{6}\b|#[0-9a-fA-F]{3}\b/g)) counts.set(hex.toUpperCase(), (counts.get(hex.toUpperCase()) ?? 0) + 1);
   const imgs = [...html.matchAll(/<img\b([^>]*)>/gi)];
-  const graphics = [...html.matchAll(/<svg\b([^>]*)>([\s\S]*?)<\/svg>/gi)]
-    .map(([, a, inner]) => (attr(a, "aria-label") ?? inner.match(/<title[^>]*>([\s\S]*?)<\/title>/i)?.[1] ?? "").replace(/\s+/g, " ").trim().slice(0, 80))
-    .filter(Boolean)
-    .slice(0, 8);
+  // Labels are left out on purpose: a label is the page's own claim, and only a screenshot shows what is drawn.
+  const graphics = [...html.matchAll(/<svg\b[^>]*>([\s\S]*?)<\/svg>/gi)].filter(([, inner]) => /<(path|circle|rect|ellipse|polygon|polyline|line|image|use|text)\b/i.test(inner)).length;
   return {
     https: pageUrl.startsWith("https:"),
     viewportMeta: /<meta[^>]+name=["']viewport["'][^>]*content=["'][^"']*width=device-width/i.test(html) || /<meta[^>]+content=["'][^"']*width=device-width[^"']*["'][^>]*name=["']viewport["']/i.test(html),
@@ -380,7 +378,7 @@ export function describeEvidence(e: Evidence, extra: { form?: FormTest; pagespee
     ...(readable ? [] : [`Content type: ${e.contentType || "unknown"} (the checker cannot read inside this kind of file)`]),
     `Mobile viewport tag: ${f.viewportMeta ? "present" : "missing"}`,
     `Colours found in the page's styles, most used first: ${f.colors.join(", ") || "none"}`,
-    `Images: ${f.images} (${f.imagesWithoutAlt} without alt text); inline SVG graphics with a label: ${f.graphics.length}`,
+    `Image files (img tags): ${f.images} (${f.imagesWithoutAlt} without alt text); inline SVG graphics: ${f.graphics}`,
     `Files loaded over plain http://: ${f.insecure.length ? `${f.insecure.length} (${f.insecure.join(", ")})` : "none"}`,
   );
   if (extra.form) measured.push("error" in extra.form ? `Form test: ${extra.form.error}` : `Form test: sent a test message to ${extra.form.action}; it answered HTTP ${extra.form.status}`);
@@ -396,7 +394,6 @@ export function describeEvidence(e: Evidence, extra: { form?: FormTest; pagespee
     `BEGIN PAGE-${code}`,
     `Page title: ${e.title || "(none)"}`,
     ...(html ? heroLines(f.hero) : []),
-    ...(f.graphics.length ? [`Inline SVG graphic labels: ${f.graphics.map((g) => `"${g}"`).join(", ")}`] : []),
     `Forms:${f.forms.length ? f.forms.map((x) => `${x.method.toUpperCase()} ${x.action} [${x.fields.join(", ")}]`).join("; ") : "none"}`,
     "Visible text:",
     e.text || "(empty)",
