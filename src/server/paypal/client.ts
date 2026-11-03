@@ -265,7 +265,7 @@ export type PayPalClient = ReturnType<typeof createPayPalClient>;
 /** The app's client, from environment variables. Throws a clear message when setup is missing. */
 export function payPalFromEnv(env: Record<string, string | undefined> = process.env): PayPalClient {
   const missing = ["PAYPAL_CLIENT_ID", "PAYPAL_CLIENT_SECRET"].filter((k) => !env[k]);
-  if (missing.length) throw new Error(`Missing ${missing.join(", ")}. See docs/sandbox-setup-steps.md.`);
+  if (missing.length) throw new Error(`Missing ${missing.join(", ")}. Copy .env.example to .env.local and set them (see the README).`);
   const mode = env.PAYPAL_ENV === "live" ? "live" : "sandbox";
   return createPayPalClient({ clientId: env.PAYPAL_CLIENT_ID!, clientSecret: env.PAYPAL_CLIENT_SECRET!, env: mode });
 }

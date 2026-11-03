@@ -4,8 +4,8 @@ import { llmFromEnv } from "../../llm";
 import { createHybridJudge, createLlmJudge, createRulesJudge, type Judge, type Verdict } from "../judge";
 import { CASES, score, type EvalCase } from "./cases";
 
-// The published results sit next to the plan in docs/.
-const RESULTS = new URL("../../../../../docs/eval-results.md", import.meta.url);
+// The published results sit next to the plan in the app's docs/ folder.
+const RESULTS = new URL("../../../../docs/eval-results.md", import.meta.url);
 
 describe("evaluation set", () => {
   it("has a mix of groups and expected verdicts", () => {

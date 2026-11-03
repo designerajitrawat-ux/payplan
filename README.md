@@ -15,8 +15,9 @@ The client can approve each release themselves or hand that job to their **AI ag
 
 ## Run it locally (no keys needed)
 
+From the app folder (the repository root of the public copy):
+
 ```bash
-cd web
 npm install
 npm run dev
 ```
@@ -26,7 +27,7 @@ Open http://localhost:3000 and press **Start the walkthrough**. With no keys set
 | Part | Without keys | With keys |
 |---|---|---|
 | PayPal | A simulated PayPal in the server process. Every screen says "Simulated PayPal". | The real **PayPal sandbox** (`PAYPAL_CLIENT_ID`, `PAYPAL_CLIENT_SECRET`) |
-| Database | Embedded Postgres (PGlite) in `web/.data/` | Neon Postgres (`DATABASE_URL`) |
+| Database | Embedded Postgres (PGlite) in `.data/` | Neon Postgres (`DATABASE_URL`) |
 | Checker | Plain tests only: page is live, form sends, mobile audit. Everything else goes to "Needs a person". | AI judge (`LLM_API_KEY`, Gemini by default), plus PageSpeed mobile audit and screenshot (`PAGESPEED_API_KEY`) |
 
 Copy `.env.example` to `.env.local` to set keys. Never commit real values.
