@@ -38,7 +38,7 @@ const paypalParts = [
   { api: "Orders v2 · AUTHORIZE", use: "Locks the milestone on the client's own PayPal, payable straight to the freelancer" },
   { api: "Payments v2 · partial capture", use: "Releases one criterion's share at a time" },
   { api: "Void and reauthorize", use: "Returns unverified money, and keeps a long job's hold alive past day 3" },
-  { api: "Disputes · evidence", use: "Answers a dispute with the signed report as a PDF" },
+  { api: "Disputes · evidence", use: "Turns the signed report into a PDF for any PayPal dispute, sent by API when the dispute reaches PayPlan" },
   { api: "Webhooks", use: "Confirms captures and catches disputes as PayPal reports them" },
 ];
 
