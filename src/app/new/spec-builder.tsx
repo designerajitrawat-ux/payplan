@@ -81,7 +81,9 @@ export function SpecBuilder() {
     if (mode === "replace") setCriteria([]);
     draftCriteria(brief)
       .then((d) => {
-        const drafted = d.criteria.map((c) => ({ ...c, key: nextKey++ }));
+        // The walkthrough tells one story: v1's form fails and the share that passed is paid anyway.
+        // So only the headline is a gate there; a gated form would hold everything back.
+        const drafted = d.criteria.map((c) => ({ ...c, mustPass: demo ? /headline/i.test(c.title) : c.mustPass, key: nextKey++ }));
         setCriteria((list) => (mode === "add" ? [...list, ...drafted] : drafted));
         setDraftNote(
           d.source === "template"
