@@ -11,6 +11,8 @@ export type PageFacts = {
   colors: string[];
   images: number;
   imagesWithoutAlt: number;
+  /** Labels of inline SVG graphics (aria-label or a title), such as a logo drawn in SVG rather than loaded as an image. */
+  graphics: string[];
   hero: Hero;
   /** Scripts, images, stylesheets, frames and media the page loads over plain http:// (mixed content on an HTTPS page). */
   insecure: string[];
@@ -49,8 +51,11 @@ export type Evidence = PageEvidence | MissingEvidence;
 /** A real test message sent through the page's form. */
 export type FormTest = { action: string; status: number; ok: boolean; ms: number } | { action: string; error: string };
 
-/** Google PageSpeed Insights, mobile: layout audits, a performance score and a screenshot. */
-export type PageSpeed = { performance: number; viewport: boolean; contentWidth: boolean; screenshot?: string } | { unavailable: string };
+/**
+ * Google PageSpeed Insights, mobile: layout audits, a performance score and a screenshot.
+ * A layout audit is undefined when this Lighthouse version does not report it (Lighthouse 13 dropped content-width).
+ */
+export type PageSpeed = { performance: number; viewport?: boolean; contentWidth?: boolean; screenshot?: string } | { unavailable: string };
 
 export type CollectOptions = { fetch?: typeof fetch; now?: () => number; allowPrivate?: boolean };
 
@@ -188,6 +193,10 @@ export function pageFacts(html: string, pageUrl: string): PageFacts {
   const counts = new Map<string, number>();
   for (const [hex] of styles.matchAll(/#[0-9a-fA-F]{6}\b|#[0-9a-fA-F]{3}\b/g)) counts.set(hex.toUpperCase(), (counts.get(hex.toUpperCase()) ?? 0) + 1);
   const imgs = [...html.matchAll(/<img\b([^>]*)>/gi)];
+  const graphics = [...html.matchAll(/<svg\b([^>]*)>([\s\S]*?)<\/svg>/gi)]
+    .map(([, a, inner]) => (attr(a, "aria-label") ?? inner.match(/<title[^>]*>([\s\S]*?)<\/title>/i)?.[1] ?? "").replace(/\s+/g, " ").trim().slice(0, 80))
+    .filter(Boolean)
+    .slice(0, 8);
   return {
     https: pageUrl.startsWith("https:"),
     viewportMeta: /<meta[^>]+name=["']viewport["'][^>]*content=["'][^"']*width=device-width/i.test(html) || /<meta[^>]+content=["'][^"']*width=device-width[^"']*["'][^>]*name=["']viewport["']/i.test(html),
@@ -195,6 +204,7 @@ export function pageFacts(html: string, pageUrl: string): PageFacts {
     colors: [...counts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 12).map(([hex]) => hex),
     images: imgs.length,
     imagesWithoutAlt: imgs.filter(([, a]) => attr(a, "alt") === undefined).length,
+    graphics,
     hero: findHero(html),
     insecure: insecureFiles(html),
     steering: plantedNotes(html),
@@ -276,10 +286,19 @@ export async function runPageSpeed(url: string, deps: { key?: string; fetch?: ty
     };
     const audits = body.lighthouseResult?.audits ?? {};
     const shot = audits["final-screenshot"]?.details?.data;
+    // The first of these audits that this Lighthouse version scored as passed (1) or failed (0).
+    // Lighthouse 13 replaced "viewport" with "viewport-insight" and dropped "content-width".
+    const decided = (...ids: string[]) => {
+      for (const id of ids) {
+        const score = audits[id]?.score;
+        if (score === 0 || score === 1) return score === 1;
+      }
+      return undefined;
+    };
     return {
       performance: Math.round((body.lighthouseResult?.categories?.performance?.score ?? 0) * 100),
-      viewport: audits.viewport?.score === 1,
-      contentWidth: audits["content-width"]?.score === 1,
+      viewport: decided("viewport-insight", "viewport"),
+      contentWidth: decided("content-width"),
       screenshot: shot?.startsWith("data:image/") ? shot : undefined,
     };
   } catch {
@@ -361,13 +380,14 @@ export function describeEvidence(e: Evidence, extra: { form?: FormTest; pagespee
     ...(readable ? [] : [`Content type: ${e.contentType || "unknown"} (the checker cannot read inside this kind of file)`]),
     `Mobile viewport tag: ${f.viewportMeta ? "present" : "missing"}`,
     `Colours found in the page's styles, most used first: ${f.colors.join(", ") || "none"}`,
-    `Images: ${f.images} (${f.imagesWithoutAlt} without alt text)`,
+    `Images: ${f.images} (${f.imagesWithoutAlt} without alt text); inline SVG graphics with a label: ${f.graphics.length}`,
     `Files loaded over plain http://: ${f.insecure.length ? `${f.insecure.length} (${f.insecure.join(", ")})` : "none"}`,
   );
   if (extra.form) measured.push("error" in extra.form ? `Form test: ${extra.form.error}` : `Form test: sent a test message to ${extra.form.action}; it answered HTTP ${extra.form.status}`);
   if (extra.pagespeed) {
     const p = extra.pagespeed;
-    measured.push("unavailable" in p ? `Mobile audit: not run (${p.unavailable})` : `Mobile audit (PageSpeed): performance ${p.performance}/100; viewport ${p.viewport ? "ok" : "failed"}; content fits the screen width ${p.contentWidth ? "yes" : "no"}`);
+    const said = (v: boolean | undefined, yes: string, no: string) => (v === undefined ? "not reported by this audit" : v ? yes : no);
+    measured.push("unavailable" in p ? `Mobile audit: not run (${p.unavailable})` : `Mobile audit (PageSpeed): performance ${p.performance}/100; viewport ${said(p.viewport, "ok", "failed")}; content fits the screen width ${said(p.contentWidth, "yes", "no")}`);
   }
   if (opts.screenshot) measured.push("Screenshot: a phone screenshot taken by the mobile audit is attached.");
   const code = opts.code ?? boundaryCode();
@@ -376,7 +396,8 @@ export function describeEvidence(e: Evidence, extra: { form?: FormTest; pagespee
     `BEGIN PAGE-${code}`,
     `Page title: ${e.title || "(none)"}`,
     ...(html ? heroLines(f.hero) : []),
-    `Forms: ${f.forms.length ? f.forms.map((x) => `${x.method.toUpperCase()} ${x.action} [${x.fields.join(", ")}]`).join("; ") : "none"}`,
+    ...(f.graphics.length ? [`Inline SVG graphic labels: ${f.graphics.map((g) => `"${g}"`).join(", ")}`] : []),
+    `Forms:${f.forms.length ? f.forms.map((x) => `${x.method.toUpperCase()} ${x.action} [${x.fields.join(", ")}]`).join("; ") : "none"}`,
     "Visible text:",
     e.text || "(empty)",
     `END PAGE-${code}`,

@@ -73,7 +73,11 @@ export async function runVerification(svc: MilestoneService, judge: Judge, id: s
     await line(
       "unavailable" in pagespeed
         ? { verb: "audit", text: `mobile audit skipped: ${pagespeed.unavailable}` }
-        : { verb: "audit", text: `mobile audit: performance ${pagespeed.performance}, fits the screen ${pagespeed.contentWidth ? "yes" : "no"}${pagespeed.screenshot ? ", screenshot saved" : ""}`, tone: pagespeed.contentWidth ? "good" : "bad" },
+        : {
+            verb: "audit",
+            text: `mobile audit: performance ${pagespeed.performance}, viewport ${pagespeed.viewport === undefined ? "not reported" : pagespeed.viewport ? "ok" : "failed"}${pagespeed.contentWidth === undefined ? "" : `, fits the screen ${pagespeed.contentWidth ? "yes" : "no"}`}${pagespeed.screenshot ? ", screenshot saved" : ""}`,
+            tone: pagespeed.viewport === false || pagespeed.contentWidth === false ? "bad" : "good",
+          },
     );
   }
   const screenshot = pagespeed && !("unavailable" in pagespeed) ? pagespeed.screenshot : undefined;
@@ -86,7 +90,8 @@ export async function runVerification(svc: MilestoneService, judge: Judge, id: s
       continue;
     }
     const extra = { form: NEEDS.form.test(c.title) ? form : undefined, pagespeed: NEEDS.mobile.test(c.title) || NEEDS.speed.test(c.title) || NEEDS.visual.test(c.title) ? pagespeed : undefined };
-    const image = c.check === "ai" && NEEDS.visual.test(c.title) ? screenshot : undefined;
+    // Visual rubric criteria see the phone screenshot, and so does a mobile criterion the audit could not settle.
+    const image = (c.check === "ai" && NEEDS.visual.test(c.title)) || NEEDS.mobile.test(c.title) ? screenshot : undefined;
     const v = await judge.judge({ criterion: c, milestone: { title: m.title, brief: m.brief }, evidence, extra, image });
     results.push({ criterionId: c.id, ...v });
     await line({

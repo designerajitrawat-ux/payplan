@@ -151,9 +151,12 @@ export function createRulesJudge(): Judge {
         const speed = NEEDS.speed.test(title);
         if (speed && p.performance < target) return { verdict: "fail", confidence: 0.95, evidence: `PageSpeed mobile performance ${p.performance}/100`, reason: `Needed ${target} or more.` };
         if (NEEDS.mobile.test(title)) {
-          const ok = p.viewport && p.contentWidth;
-          const score = speed ? `performance ${p.performance}/100, ` : "";
-          return { verdict: ok ? "pass" : "fail", confidence: 0.95, evidence: `PageSpeed mobile: ${score}viewport ${p.viewport ? "ok" : "failed"}, content fits ${p.contentWidth ? "yes" : "no"}`, reason: ok ? (speed ? `Scored ${target} or more and fits a phone screen.` : "The page fits a phone screen.") : "The page does not fit a phone screen." };
+          const said = (v: boolean | undefined, yes: string, no: string) => (v === undefined ? "not reported" : v ? yes : no);
+          const evidence = `PageSpeed mobile: ${speed ? `performance ${p.performance}/100, ` : ""}viewport ${said(p.viewport, "ok", "failed")}, content fits ${said(p.contentWidth, "yes", "no")}`;
+          if (p.viewport === false || p.contentWidth === false) return { verdict: "fail", confidence: 0.95, evidence, reason: "The page does not fit a phone screen." };
+          // Lighthouse 13 no longer measures whether the content fits, so the phone screenshot has to show it.
+          if (!p.viewport || p.contentWidth === undefined) return { verdict: "review", confidence: 0, evidence, reason: "The audit cannot measure whether the layout fits a phone, so the phone screenshot has to show it." };
+          return { verdict: "pass", confidence: 0.95, evidence, reason: speed ? `Scored ${target} or more and fits a phone screen.` : "The page fits a phone screen." };
         }
         return { verdict: "pass", confidence: 0.95, evidence: `PageSpeed mobile performance ${p.performance}/100`, reason: `Needed ${target} or more.` };
       }
