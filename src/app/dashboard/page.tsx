@@ -132,7 +132,7 @@ export default function Dashboard() {
                   onClick={() => setFilter(tab.key)}
                   className={`relative isolate inline-flex min-h-9 items-center gap-2 rounded-full px-4 text-sm transition-colors ${active ? "text-white" : "text-mute hover:text-ink"}`}
                 >
-                  {active ? <motion.span layoutId="dash-tab" className="absolute inset-0 -z-10 rounded-full bg-brand shadow-[0_8px_24px_-10px_rgba(47,94,255,0.9)]" transition={{ type: "spring", bounce: 0.2, duration: 0.5 }} /> : null}
+                  {active ? <motion.span layoutId="dash-tab" className="volt-fill absolute inset-0 -z-10 rounded-full bg-brand shadow-[0_8px_24px_-10px_rgba(47,94,255,0.9)]" transition={{ type: "spring", bounce: 0.2, duration: 0.5 }} /> : null}
                   {tab.label}
                   <span className={`rounded-full px-1.5 text-xs ${active ? "bg-white/20" : "bg-white/[0.06]"}`}>{count}</span>
                 </button>

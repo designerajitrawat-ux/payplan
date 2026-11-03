@@ -34,6 +34,8 @@
 
 :root {
   color-scheme: dark;
+  /* Grey film grain, blended over the volt blue so it reads as texture rather than colour. */
+  --grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23g)'/%3E%3C/svg%3E");
 }
 
 html {
@@ -121,17 +123,74 @@ body {
     mask-image: radial-gradient(ellipse 80% 60% at 50% 0%, black 30%, transparent 75%);
   }
 
-  /* Tactile buttons: a solid lip under the face that you press down into. Set --lip-color per variant. */
+  /* Tactile buttons: a solid lip under the face that you press down into. Set --lip-color per variant,
+     and --shine for a thin highlight along the top edge. */
   .press {
-    box-shadow: 0 4px 0 0 var(--lip-color, #0f249e);
+    box-shadow: var(--shine, 0 0 #0000), 0 4px 0 0 var(--lip-color, #0f249e);
   }
   .press:hover {
     transform: translateY(-1px);
-    box-shadow: 0 5px 0 0 var(--lip-color, #0f249e);
+    box-shadow: var(--shine, 0 0 #0000), 0 5px 0 0 var(--lip-color, #0f249e);
   }
   .press:active {
     transform: translateY(4px);
-    box-shadow: 0 0 0 0 var(--lip-color, #0f249e);
+    box-shadow: var(--shine, 0 0 #0000), 0 0 0 0 var(--lip-color, #0f249e);
+  }
+
+  /* Volt blue with texture instead of a flat fill: a soft light from the top left, a deeper corner,
+     a fine blueprint grid (the same idea as the dark pages) and film grain. For big surfaces. */
+  .volt {
+    position: relative;
+    isolation: isolate;
+    background:
+      radial-gradient(120% 90% at 0% 0%, rgba(120, 146, 255, 0.55), transparent 55%),
+      radial-gradient(110% 90% at 100% 100%, rgba(10, 26, 160, 0.6), transparent 60%),
+      var(--color-brand);
+  }
+  .volt::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    border-radius: inherit;
+    pointer-events: none;
+    background-image:
+      linear-gradient(rgba(255, 255, 255, 0.09) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255, 255, 255, 0.09) 1px, transparent 1px);
+    background-size: 44px 44px;
+    background-position: center;
+    -webkit-mask-image: radial-gradient(ellipse 80% 90% at 70% 35%, black 15%, transparent 78%);
+    mask-image: radial-gradient(ellipse 80% 90% at 70% 35%, black 15%, transparent 78%);
+  }
+  /* The same light and grain without the grid, for buttons, tabs and pills. */
+  .volt-fill {
+    position: relative;
+    isolation: isolate;
+    background-image:
+      linear-gradient(180deg, rgba(255, 255, 255, 0.16), rgba(255, 255, 255, 0) 60%),
+      radial-gradient(130% 160% at 0% 0%, rgba(120, 146, 255, 0.6), transparent 60%);
+    --shine: inset 0 1px 0 rgba(255, 255, 255, 0.38);
+  }
+  .volt::after,
+  .volt-fill::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    border-radius: inherit;
+    pointer-events: none;
+    opacity: 0.28;
+    mix-blend-mode: overlay;
+    background-image: var(--grain);
+    background-size: 160px 160px;
+  }
+  /* Grain alone, laid over the 3D world so it matches the textured blue around it. */
+  .film {
+    pointer-events: none;
+    opacity: 0.22;
+    mix-blend-mode: overlay;
+    background-image: var(--grain);
+    background-size: 160px 160px;
   }
 
   /* Hard-shadow sticker, slightly turned, for small badges that should feel stuck on the page. */

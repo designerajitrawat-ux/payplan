@@ -148,6 +148,9 @@ export function Journey({ intro }: { intro: ReactNode }) {
     <section ref={section} aria-label="PayPlan: paid as agreed, then one milestone walked through in 3D" className="relative h-[460vh] bg-brand">
       <div className="sticky top-0 h-svh overflow-hidden">
         <canvas ref={canvas} aria-hidden className={`absolute inset-0 size-full transition-opacity duration-1000 ${ready ? "opacity-100" : "opacity-0"}`} />
+        {/* The same light and grain as the other volt-blue surfaces, laid over the 3D world. */}
+        <div aria-hidden className="pointer-events-none absolute inset-0 bg-[radial-gradient(120%_90%_at_0%_0%,rgba(120,146,255,0.32),transparent_55%),radial-gradient(110%_90%_at_100%_100%,rgba(10,26,160,0.35),transparent_60%)]" />
+        <div aria-hidden className="film absolute inset-0" />
 
         <motion.div style={{ opacity: heroOpacity, y: heroY, pointerEvents: heroEvents }} className="absolute inset-0 z-10">
           {/* Behind the copy the world is dimmed, so it never competes with the text; the edges stay bright. */}

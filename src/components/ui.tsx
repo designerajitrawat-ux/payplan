@@ -11,7 +11,7 @@ const buttonBase =
 
 // Filled buttons are tactile (a lip you press into); quiet ones shrink a little instead.
 const buttonVariants = {
-  primary: "press bg-brand text-white [--lip-color:#0f249e] hover:bg-[#3557ff]",
+  primary: "press volt-fill bg-brand text-white [--lip-color:#0f249e] hover:bg-[#3557ff]",
   secondary: "press border border-white/12 bg-panel-2 text-ink [--lip-color:#000000] hover:bg-[#222739]",
   ghost: "text-mute hover:bg-white/5 hover:text-ink active:scale-[0.97]",
   danger: "border border-flare/40 bg-flare/5 text-flare hover:bg-flare/10 active:scale-[0.97]",

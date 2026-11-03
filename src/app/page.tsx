@@ -128,7 +128,7 @@ export default function Home() {
         </div>
       </section>
 
-      <section id="try" className="scroll-mt-12 bg-brand">
+      <section id="try" className="volt scroll-mt-12">
         <div className="mx-auto grid max-w-7xl gap-10 px-4 py-24 sm:px-6 lg:grid-cols-[0.9fr_1.1fr] lg:items-center">
           <InView>
             <SectionLabel n="03" label="Try the checker" tone="blue" />
@@ -178,7 +178,7 @@ export default function Home() {
 
       <section className="mx-auto max-w-7xl px-4 pb-24 sm:px-6">
         <InView>
-          <div className="relative overflow-hidden rounded-[36px] bg-brand px-6 py-16 text-center sm:px-12 sm:py-20">
+          <div className="volt overflow-hidden rounded-[36px] px-6 py-16 text-center sm:px-12 sm:py-20">
             <h2 className="mx-auto max-w-4xl font-display text-4xl font-bold uppercase leading-[0.95] tracking-[-0.03em] text-balance text-white font-stretch-expanded sm:text-6xl">See one milestone from brief to payout.</h2>
             <p className="mx-auto mt-5 max-w-lg text-white/90">Seven steps, about two minutes. You play both the freelancer and the client.</p>
             <div className="mt-10 flex justify-center">

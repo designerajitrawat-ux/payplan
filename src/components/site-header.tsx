@@ -215,14 +215,14 @@ function MarketingHeader() {
               key={s.id}
               href={`#${s.id}`}
               aria-current={active === s.id ? "true" : undefined}
-              className={`items-center border-r border-white/10 px-5 transition-colors ${i === 1 ? "hidden sm:flex" : "hidden lg:flex"} ${active === s.id ? "bg-brand text-white" : "text-mute hover:bg-white/[0.04] hover:text-ink"}`}
+              className={`items-center border-r border-white/10 px-5 transition-colors ${i === 1 ? "hidden sm:flex" : "hidden lg:flex"} ${active === s.id ? "volt-fill bg-brand text-white" : "text-mute hover:bg-white/[0.04] hover:text-ink"}`}
             >
               <span className={active === s.id ? "text-white/70" : "text-dim"}>{String(i + 1).padStart(2, "0")}.</span>
               {s.label}
             </a>
           ))}
         </nav>
-        <Link href="/dashboard" className="group flex items-center gap-2 bg-brand px-4 font-mono text-xs uppercase tracking-[0.08em] text-white transition-colors hover:bg-[#3557ff] sm:px-6">
+        <Link href="/dashboard" className="volt-fill group flex items-center gap-2 bg-brand px-4 font-mono text-xs uppercase tracking-[0.08em] text-white transition-colors hover:bg-[#3557ff] sm:px-6">
           Open the app
           <svg viewBox="0 0 16 16" className="size-3.5 transition-transform group-hover:translate-x-0.5" aria-hidden>
             <path d="M3 8h9M8.5 4.5L12 8l-3.5 3.5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />

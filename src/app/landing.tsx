@@ -7,7 +7,7 @@ import { NumberTicker, trackSpotlight } from "@/components/motion";
 import { Arrow } from "@/components/ui";
 
 const ctaStyles = {
-  primary: "bg-brand text-white [--lip-color:#0f249e] hover:bg-[#3557ff]",
+  primary: "volt-fill bg-brand text-white [--lip-color:#0f249e] hover:bg-[#3557ff]",
   secondary: "border border-white/12 bg-panel-2 text-ink [--lip-color:#000000] hover:bg-[#222739]",
   light: "bg-white text-paper-ink [--lip-color:#0b1a7a] hover:bg-paper",
   ink: "border border-white/10 bg-paper-ink text-white [--lip-color:#000000] hover:bg-[#1b1d26]",
